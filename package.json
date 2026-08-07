@@ -1,0 +1,8 @@
+{
+  "name": "observatory",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  }
+}
