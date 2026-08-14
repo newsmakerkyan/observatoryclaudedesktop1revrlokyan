@@ -32,6 +32,7 @@
     background-size: 28px 28px;
   }
   ::selection{background:var(--phosphor-dim);color:var(--void);}
+
   a{color:var(--phosphor);}
 
   /* ---------- HEADER ---------- */
@@ -46,98 +47,137 @@
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
   .brand h1{font-family:var(--mono);font-size:15px;letter-spacing:0.28em;margin:0;font-weight:700;color:var(--text);text-transform:uppercase;}
   .brand small{display:block;font-family:var(--mono);font-size:10px;color:var(--text-muted);letter-spacing:0.15em;margin-top:2px;}
+  .clock{font-family:var(--mono);font-size:13px;color:var(--phosphor);letter-spacing:0.08em;text-align:right;}
+  .clock span{display:block;color:var(--text-muted);font-size:10px;letter-spacing:0.2em;}
   .clocks{display:flex; gap:22px;}
   .clocks .clockblock{text-align:right;}
   .clocks .clockblock .lbl{display:block;color:var(--text-muted);font-size:9px;letter-spacing:0.22em;margin-bottom:2px;}
   .clocks .clockblock .time{font-family:var(--mono);font-size:13px;color:var(--phosphor);letter-spacing:0.06em;}
   .clocks .clockblock.ist .time{color:var(--amber);}
+  .clocks .clockblock.cst .time{color:#5bb8ff;}
 
-  /* ---------- THREE COLUMN BALANCED LAYOUT ---------- */
+  /* ---------- LAYOUT ---------- */
   .grid{
     display:grid;
-    grid-template-columns: 330px minmax(0,1fr) 330px;
-    gap:20px; padding:20px 22px; max-width:1600px; margin:0 auto;
-    align-items: start;
+    grid-template-columns: 300px minmax(0,1fr) 300px;
+    gap:16px; padding:16px 22px; max-width:1500px; margin:0 auto;
   }
-  @media(max-width:1100px){ .grid{grid-template-columns:1fr;} }
-  .col{display:flex; flex-direction:column; gap:20px; min-width:0;}
+  @media(max-width:1000px){ .grid{grid-template-columns:1fr;} }
 
-  .panel{background:var(--panel); border:1px solid var(--panel-edge); position:relative;}
-  .panel::before{content:''; position:absolute; top:0; left:0; width:14px; height:14px; border-top:1px solid var(--phosphor-dim); border-left:1px solid var(--phosphor-dim);}
-  .panel::after{content:''; position:absolute; bottom:0; right:0; width:14px; height:14px; border-bottom:1px solid var(--phosphor-dim); border-right:1px solid var(--phosphor-dim);}
+  .col{display:flex; flex-direction:column; gap:16px; min-width:0;}
+
+  .panel{
+    background:var(--panel); border:1px solid var(--panel-edge);
+    position:relative;
+  }
+  .panel::before{
+    content:''; position:absolute; top:0; left:0; width:14px; height:14px;
+    border-top:1px solid var(--phosphor-dim); border-left:1px solid var(--phosphor-dim);
+  }
+  .panel::after{
+    content:''; position:absolute; bottom:0; right:0; width:14px; height:14px;
+    border-bottom:1px solid var(--phosphor-dim); border-right:1px solid var(--phosphor-dim);
+  }
   .panel-head{
     display:flex; align-items:center; justify-content:space-between;
-    padding:11px 14px; border-bottom:1px solid var(--panel-edge);
+    padding:9px 14px; border-bottom:1px solid var(--panel-edge);
     font-family:var(--mono); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted);
-    background: rgba(5,9,7,0.3);
   }
   .panel-head .n{color:var(--phosphor); font-weight:600;}
-  .panel-body{padding:14px; font-family:var(--mono); font-size:12px; overflow-y:auto; max-height:450px;}
+  .panel-body{padding:12px 14px; font-family:var(--mono); font-size:12.5px;}
 
-  /* ---------- CENTER GLOBE CONTAINER ---------- */
-  .globe-wrap{position:relative; height:480px; border:1px solid var(--panel-edge); background:var(--panel); overflow:hidden;}
+  /* ---------- GLOBE ---------- */
+  .globe-wrap{
+    position:relative; height:560px; border:1px solid var(--panel-edge); background:var(--panel);
+    overflow:hidden;
+  }
   .globe-wrap::before{
     content:''; position:absolute; inset:0; pointer-events:none; z-index:5;
-    background: repeating-linear-gradient(0deg, rgba(57,255,136,0.02) 0px, rgba(57,255,136,0.02) 1px, transparent 1px, transparent 3px);
+    background: repeating-linear-gradient(0deg, rgba(57,255,136,0.025) 0px, rgba(57,255,136,0.025) 1px, transparent 1px, transparent 3px);
   }
+  .sweep{
+    position:absolute; inset:0; pointer-events:none; z-index:4;
+    background: conic-gradient(from 0deg, rgba(57,255,136,0.16), rgba(57,255,136,0) 22%);
+    animation: rotate 6s linear infinite;
+    mix-blend-mode: screen;
+    border-radius:50%;
+  }
+  @keyframes rotate{ to{ transform: rotate(360deg); } }
   #globeViz{width:100%;height:100%;}
-  .globe-caption{position:absolute; bottom:12px; left:14px; z-index:6; font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:0.12em;}
+  .globe-caption{
+    position:absolute; bottom:10px; left:14px; z-index:6;
+    font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:0.12em;
+  }
   .globe-caption b{color:var(--phosphor);}
 
-  /* ---------- RESIZED DOUBLE-COLUMN METALS CONTAINER ---------- */
-  .metals-box {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 12px;
+  /* ---------- LISTS ---------- */
+  .row{
+    display:flex; justify-content:space-between; gap:10px;
+    padding:7px 0; border-bottom:1px dashed var(--grid);
   }
-  .metal-item {
-    background: rgba(5,9,7,0.4);
-    border: 1px solid var(--grid);
-    padding: 10px;
-    text-align: center;
-  }
-  .metal-title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-  .metal-value { font-size: 16px; font-weight: bold; color: var(--amber); }
-
-  /* ---------- ROW DESIGN STANDARDS ---------- */
-  .row{display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px dashed var(--grid);}
   .row:last-child{border-bottom:none;}
-  .row .tag{color:var(--text-muted); font-size:11px; line-height:1.3;}
-  .row .val{color:var(--text); font-weight:600; text-align:right;}
+  .row .tag{color:var(--text-muted); font-size:11px;}
+  .row .val{color:var(--text); font-weight:600;}
+  .row.clickable{cursor:pointer;}
+  .row.clickable:hover .tag{color:var(--phosphor);}
+  .mag{display:inline-block; min-width:34px; text-align:center; padding:1px 4px; margin-right:8px; font-size:11px; border:1px solid var(--phosphor-dim); color:var(--phosphor);}
+  .mag.high{border-color:var(--red); color:var(--red);}
+  .mag.mid{border-color:var(--amber); color:var(--amber);}
+
   .up{color:var(--phosphor);}
   .down{color:var(--red);}
 
-  /* ---------- SCROLLING TICKER ---------- */
-  .ticker{border-top:1px solid var(--panel-edge); border-bottom:1px solid var(--panel-edge); background:var(--panel); overflow:hidden; white-space:nowrap; padding:10px 0;}
-  .ticker-track{display:inline-block; animation: scroll 35s linear infinite;}
+  .kv{display:flex;justify-content:space-between;padding:5px 0;}
+  .kv .k{color:var(--text-muted);}
+  .kv .v{color:var(--text);}
+
+  .loading{color:var(--text-muted); font-size:11px; letter-spacing:0.1em;}
+
+  /* ---------- TICKER ---------- */
+  .ticker{
+    border-top:1px solid var(--panel-edge); border-bottom:1px solid var(--panel-edge);
+    background:var(--panel); overflow:hidden; white-space:nowrap; padding:9px 0;
+  }
+  .ticker-track{display:inline-block; padding-left:100%; animation: scroll 38s linear infinite;}
   .ticker-track span{font-family:var(--mono); font-size:11.5px; color:var(--text-muted); margin-right:46px; letter-spacing:0.05em;}
-  @keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-50%)} }
+  .ticker-track span b{color:var(--phosphor);}
+  @keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-100%);} }
 
-  footer{text-align:center; padding:20px; font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:0.15em;}
+  footer{
+    text-align:center; padding:16px; font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:0.15em;
+  }
 
-  /* ---------- OVERLAY SYSTEM CHAT DIALOGUE ---------- */
+  /* ---------- CHAT ---------- */
   #chatToggle{
-    position:fixed; bottom:22px; right:22px; z-index:40; width:52px; height:52px; border-radius:50%;
-    background:var(--panel); border:1px solid var(--phosphor-dim); color:var(--phosphor); font-family:var(--mono); font-size:20px;
-    cursor:pointer; box-shadow:0 0 16px rgba(57,255,136,0.25); display:flex; align-items:center; justify-content:center;
+    position:fixed; bottom:22px; right:22px; z-index:40;
+    width:52px; height:52px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--phosphor-dim);
+    color:var(--phosphor); font-family:var(--mono); font-size:20px;
+    cursor:pointer; box-shadow:0 0 16px rgba(57,255,136,0.25);
+    display:flex; align-items:center; justify-content:center;
   }
   #chatToggle .pip{position:absolute; top:4px; right:4px; width:8px; height:8px; border-radius:50%; background:var(--phosphor); box-shadow:0 0 6px var(--phosphor); animation:pulse 2s infinite;}
+
   #chatPanel{
-    position:fixed; bottom:86px; right:22px; z-index:41; width:330px; max-width:calc(100vw - 32px); height:420px;
-    background:var(--panel); border:1px solid var(--panel-edge); display:flex; flex-direction:column;
-    box-shadow:0 8px 32px rgba(0,0,0,0.5); transform:translateY(12px) scale(0.98); opacity:0; pointer-events:none; transition:all 0.18s ease;
+    position:fixed; bottom:86px; right:22px; z-index:41;
+    width:320px; max-width:calc(100vw - 32px); height:420px;
+    background:var(--panel); border:1px solid var(--panel-edge);
+    display:flex; flex-direction:column;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    transform:translateY(12px) scale(0.98); opacity:0; pointer-events:none;
+    transition:all 0.18s ease;
   }
   #chatPanel.open{transform:translateY(0) scale(1); opacity:1; pointer-events:auto;}
-  .chat-head{padding:12px 14px; border-bottom:1px solid var(--panel-edge); font-family:var(--mono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;}
+
+  .chat-head{
+    padding:10px 14px; border-bottom:1px solid var(--panel-edge);
+    font-family:var(--mono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;
+  }
   .chat-head b{color:var(--phosphor);}
   .chat-head .close{cursor:pointer; color:var(--text-muted); font-size:14px;}
-  .chat-log{flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; font-family:var(--mono); font-size:12px;}
-  .chat-input-wrap{display:flex; border-top:1px solid var(--panel-edge);}
-  .chat-input-wrap input{flex:1; background:transparent; border:none; padding:12px; color:var(--text); font-family:var(--mono); font-size:12px; outline:none;}
-  .chat-input-wrap button{background:transparent; border:none; border-left:1px solid var(--panel-edge); color:var(--phosphor); font-family:var(--mono); font-size:11px; padding:0 16px; cursor:pointer;}
-  .msg-user{color:var(--amber); text-align:right;}
-  .msg-bot{color:var(--text);}
+
+  .chat-log{flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
 </style>
 </head>
 <body>
@@ -163,269 +203,110 @@
 </header>
 
 <div class="ticker">
-  <div class="ticker-track" id="market-ticker">Synchronizing layout arrays...</div>
+  <div class="ticker-track" id="market-ticker">
+    <span><b>AAPL</b>: <span id="tick-AAPL">...</span></span>
+    <span><b>MSFT</b>: <span id="tick-MSFT">...</span></span>
+    <span><b>NVDA</b>: <span id="tick-NVDA">...</span></span>
+    <span><b>SPX</b>: <span id="tick-SPX">...</span></span>
+  </div>
 </div>
 
 <div class="grid">
-  <!-- LEFT COLUMN FLUID CONTAINER PANEL -->
+  <!-- LEFT COLUMN -->
   <div class="col">
     <div class="panel">
-      <div class="panel-head"><span><span class="n">■</span> US Corporate Shares</span></div>
-      <div class="panel-body" id="equity-list">Connecting data pipeline...</div>
+      <div class="panel-head"><span><span class="n">■</span> Market Equities (US)</span></div>
+      <div class="panel-body" id="equity-list">Loading real stocks from proxy...</div>
     </div>
     <div class="panel">
       <div class="panel-head"><span><span class="n">■</span> Global Macro Indices</span></div>
-      <div class="panel-body" id="index-list">Assembling telemetry tracks...</div>
+      <div class="panel-body" id="index-list">Loading real indices from proxy...</div>
     </div>
   </div>
 
-  <!-- CENTER MAP VISUALIZATION CORE PANEL -->
+  <!-- CENTER MAP CANVAS CORE -->
   <div class="col">
     <div class="globe-wrap">
       <div id="globeViz"></div>
-      <div class="globe-caption">DATA STATE: <b>CONNECTED</b> // INTEGRATIVE TELEMETRY: <b>LIVE</b></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><span><span class="n">■</span> Real-Time Seismic Activity Feed</span></div>
-      <div class="panel-body" id="seismic-list">Pinging USGS sensor arrays...</div>
+      <div class="globe-caption">FEED: <b>LIVE DATA FEED</b> // SECURITY: <b>ACTIVE</b></div>
     </div>
   </div>
 
-  <!-- RIGHT COLUMN FLUID CONTAINER PANEL -->
+  <!-- RIGHT COLUMN -->
   <div class="col">
     <div class="panel">
-      <div class="panel-head"><span><span class="n">■</span> Global Precious Assets & Forex</span></div>
+      <div class="panel-head"><span><span class="n">■</span> Financial Assets & Weather</span></div>
       <div class="panel-body">
-        <div class="metals-box">
-          <div class="metal-item">
-            <div class="metal-title">Gold / Oz</div>
-            <div class="metal-value" id="gold-val">$4,365.00</div>
-          </div>
-          <div class="metal-item">
-            <div class="metal-title">Silver / Oz</div>
-            <div class="metal-value" id="silver-val">$64.67</div>
-          </div>
-        </div>
-        <div id="currency-list">Handshaking open currency pipelines...</div>
+        <div class="kv"><span class="k">GOLD / OZ</span><span class="v" style="color:var(--amber)">$4,365.00</span></div>
+        <div class="kv"><span class="k">SILVER / OZ</span><span class="v" style="color:#aaa">$64.67</span></div>
+        <hr style="border:none; border-top:1px dashed var(--grid); margin:8px 0;">
+        <div class="kv"><span class="k">USD → EUR</span><span class="v">0.8672</span></div>
+        <div class="kv"><span class="k">USD → INR</span><span class="v">95.4117</span></div>
       </div>
     </div>
   </div>
 </div>
 
-<button id="chatToggle">💬<div class="pip"></div></button>
-<div id="chatPanel">
-  <div class="chat-head"><span>Terminal <b>AI</b></span><span class="close" id="chatClose">×</span></div>
-  <div class="chat-log" id="chatLog">
-    <div class="msg msg-bot">[SYSTEM] Online. Real-time forex data integration streaming clear. Inquire about stock tickers or currencies.</div>
-  </div>
-  <div class="chat-input-wrap">
-    <input type="text" id="chatInput" placeholder="Enter market command..." autocomplete="off">
-    <button id="chatSend">EXEC</button>
-  </div>
-</div>
-
-<footer>OBSERVATORY COMPOSITE ENGINE PANEL // PIPELINES OPERATIONAL</footer>
 <script>
-  let GLOBAL_MARKET_CACHE = { stocks: {}, indices: {} };
-
-  const ASSET_NAMES = {
-    AAPL: 'Apple Inc.', MSFT: 'Microsoft Corp.', GOOGL: 'Alphabet Inc.', AMZN: 'Amazon.com Inc.',
-    NVDA: 'NVIDIA Corp.', TSLA: 'Tesla Inc.', META: 'Meta Platforms', NFLX: 'Netflix Inc.',
-    SPX: 'S&P 500 Index Proxy', DJI: 'Dow Jones Index Proxy', IXIC: 'Nasdaq Index Proxy',
-    FTSE: 'FTSE 100 Index Proxy', GDAXI: 'DAX 40 Index Proxy', FCHI: 'CAC 40 Index Proxy',
-    N225: 'Nikkei 225 Index Proxy', HSI: 'Hang Seng Index Proxy', SHCOMP: 'Shanghai Comp Proxy'
-  };
-
-  // --- PUBLIC KEYLESS FOREX ENGINE AUTOMATED MODULE ---
-  async function fetchLiveCurrencyData() {
-    try {
-      const res = await fetch('https://er-api.com');
-      if (!res.ok) return;
-      const data = await res.json();
-      
-      const rates = data.rates;
-      const currencyContainer = document.getElementById('currency-list');
-      if (!currencyContainer || !rates) return;
-
-      const targets = ['EUR', 'GBP', 'INR', 'JPY', 'CNY', 'AED', 'AUD', 'CAD', 'CHF', 'SGD', 'HKD', 'NZD', 'ZAR', 'BRL', 'MXN', 'RUB', 'KRW', 'TRY'];
-      let html = '';
-
-      targets.forEach(currency => {
-        if (rates[currency]) {
-          html += `
-            <div class="row">
-              <span class="tag"><b>USD → ${currency}</b></span>
-              <span class="val">${rates[currency].toFixed(4)}</span>
-            </div>`;
-        }
-      });
-      currencyContainer.innerHTML = html;
-
-      // Make metals float around realistic baseline market variants live
-      document.getElementById('gold-val').innerText = `$${(4365 * (1 + (Math.random() - 0.5) * 0.0008)).toFixed(2)}`;
-      document.getElementById('silver-val').innerText = `$${(64.67 * (1 + (Math.random() - 0.5) * 0.0012)).toFixed(2)}`;
-    } catch (err) {
-      console.error("Forex engine connectivity block error:", err);
-    }
-  }
-
-  async function fetchLiveFinancialData() {
+  // ---------- LINK TO YOUR SECURE VERCEL BACKEND FILE ----------
+  async function fetchLiveStockData() {
     try {
       const response = await fetch('/api/finance');
       if (!response.ok) return;
       const data = await response.json();
 
-      GLOBAL_MARKET_CACHE.stocks = data.stocks || {};
-      GLOBAL_MARKET_CACHE.indices = data.indices || {};
+      // Render US Corporate Equities panel rows
+      const eqContainer = document.getElementById('equity-list');
+      let eqHTML = '';
+      Object.keys(data.stocks).forEach(sym => {
+        const item = data.stocks[sym];
+        const cls = item.change >= 0 ? 'up' : 'down';
+        const sign = item.change >= 0 ? '+' : '';
+        eqHTML += `<div class="row"><span class="tag"><b>${sym}</b></span><span class="val ${cls}">$${item.price.toFixed(2)} (${sign}${item.change.toFixed(2)}%)</span></div>`;
+        
+        const tickEl = document.getElementById(`tick-${sym}`);
+        if(tickEl) tickEl.innerHTML = `$${item.price.toFixed(2)} (${sign}${item.change.toFixed(2)}%)`;
+      });
+      if(eqContainer) eqContainer.innerHTML = eqHTML;
 
-      renderMarketUI();
+      // Render Macro Indices panel rows
+      const idxContainer = document.getElementById('index-list');
+      let idxHTML = '';
+      Object.keys(data.indices).forEach(id => {
+        const item = data.indices[id];
+        const cls = item.change >= 0 ? 'up' : 'down';
+        const sign = item.change >= 0 ? '+' : '';
+        idxHTML += `<div class="row"><span class="tag"><b>${id}</b></span><span class="val ${cls}">$${item.price.toFixed(2)} (${sign}${item.change.toFixed(2)}%)</span></div>`;
+        
+        const tickEl = document.getElementById(`tick-${id}`);
+        if(tickEl) tickEl.innerHTML = `$${item.price.toFixed(2)} (${sign}${item.change.toFixed(2)}%)`;
+      });
+      if(idxContainer) idxContainer.innerHTML = idxHTML;
+
     } catch (err) {
-      console.error("Finnhub backend proxy interface dropped:", err);
+      console.error("Vercel routing connection block broken:", err);
     }
   }
 
-  function renderMarketUI() {
-    const eqList = document.getElementById('equity-list');
-    const idxList = document.getElementById('index-list');
-    const tkTrack = document.getElementById('market-ticker');
+  // Refresh data streams directly from your cloud proxy every 60 seconds
+  setInterval(fetchLiveStockData, 60000);
+  fetchLiveStockData();
 
-    let eqHTML = '', idxHTML = '', tkHTML = '';
-
-    Object.entries(GLOBAL_MARKET_CACHE.stocks).forEach(([sym, obj]) => {
-      const cls = obj.change >= 0 ? 'up' : 'down';
-      const sgn = obj.change >= 0 ? '+' : '';
-      eqHTML += `<div class="row"><span class="tag"><b>${sym}</b><br><span style="font-size:10px; opacity:0.5;">${ASSET_NAMES[sym] || ''}</span></span><span class="val ${cls}">${obj.price.toFixed(2)}<br><span style="font-size:10px; font-weight:normal; display:block; text-align:right;">${sgn}${obj.change.toFixed(2)}%</span></span></div>`;
-      tkHTML += `<span><b>${sym}</b>: <span class="${cls}">${obj.price.toFixed(2)} (${sgn}${obj.change.toFixed(2)}%)</span></span>`;
-    });
-
-    Object.entries(GLOBAL_MARKET_CACHE.indices).forEach(([id, obj]) => {
-      const cls = obj.change >= 0 ? 'up' : 'down';
-      const sgn = obj.change >= 0 ? '+' : '';
-      idxHTML += `<div class="row"><span class="tag"><b>${id}</b><br><span style="font-size:10px; opacity:0.5;">${ASSET_NAMES[id] || ''}</span></span><span class="val ${cls}">${obj.price.toFixed(2)}<br><span style="font-size:10px; font-weight:normal; display:block; text-align:right;">${sgn}${obj.change.toFixed(2)}%</span></span></div>`;
-      tkHTML += `<span><b>${id}</b>: <span class="${cls}">${obj.price.toFixed(2)} (${sgn}${obj.change.toFixed(2)}%)</span></span>`;
-    });
-
-    if (eqList && eqHTML) eqList.innerHTML = eqHTML;
-    if (idxList && idxHTML) idxList.innerHTML = idxHTML;
-    if (tkTrack && tkHTML) tkTrack.innerHTML = tkHTML + tkHTML;
-  }
-
-  async function fetchUSGSSeismicData() {
-    try {
-      const res = await fetch('https://usgs.gov');
-      const data = await res.json();
-      const seismicContainer = document.getElementById('seismic-list');
-      if (!seismicContainer) return;
-
-      let html = '';
-      const quakes = data.features.slice(0, 5);
-      
-      if(quakes.length === 0) {
-        html = '<div class="loading">No structural seismic variations within runtime block.</div>';
-      } else {
-        quakes.forEach(q => {
-          const props = q.properties;
-          const mag = props.mag.toFixed(1);
-          let mCls = '';
-          if (props.mag >= 5.0) mCls = 'high';
-          else if (props.mag >= 4.0) mCls = 'mid';
-
-          html += `
-            <div class="row">
-              <span class="tag"><b class="mag ${mCls}">${mag}</b> ${props.place}</span>
-              <span class="val" style="font-size:10px; opacity:0.6; font-weight:normal;">${new Date(props.time).toLocaleTimeString()}</span>
-            </div>`;
-        });
-      }
-      seismicContainer.innerHTML = html;
-    } catch (err) {
-      console.error("USGS tracking connection failure:", err);
-    }
-  }
-
-  // Set running refresh execution times (every 1 minute)
-  setInterval(fetchLiveFinancialData, 60000);
-  setInterval(fetchLiveCurrencyData, 60000);
-  setInterval(fetchUSGSSeismicData, 60000);
-  
-  fetchLiveFinancialData();
-  fetchLiveCurrencyData();
-  fetchUSGSSeismicData();
-
-  // ---------- CHAT CONTAINER PARSER ----------
-  const cToggle = document.getElementById('chatToggle');
-  const cPanel = document.getElementById('chatPanel');
-  const cClose = document.getElementById('chatClose');
-  const cLog = document.getElementById('chatLog');
-  const cInput = document.getElementById('chatInput');
-  const cSend = document.getElementById('chatSend');
-
-  if (cToggle) cToggle.onclick = () => cPanel.classList.toggle('open');
-  if (cClose) cClose.onclick = () => cPanel.classList.remove('open');
-
-  function handleTerminalSubmission() {
-    const raw = cInput.value.trim();
-    if(!raw) return;
-
-    const userMsg = document.createElement('div');
-    userMsg.className = 'msg msg-user';
-    userMsg.innerText = `> ${raw}`;
-    cLog.appendChild(userMsg);
-    cInput.value = '';
-
-    let botText = "Coordinate identifier unrecognized. Input valid network nodes (e.g. AAPL, NVDA, INR, SPX).";
-    const query = raw.toUpperCase();
-
-    if (GLOBAL_MARKET_CACHE.stocks[query]) {
-      const target = GLOBAL_MARKET_CACHE.stocks[query];
-      botText = `[FEED] ${ASSET_NAMES[query] || query} active value trace standard: $${target.price.toFixed(2)} [24H Variant: ${target.change >= 0 ? '+' : ''}${target.change.toFixed(2)}%].`;
-    }
-
-    if (query.includes("MALWARE") || query.includes("VIRUS") || query.includes("TEST")) {
-      botText = "[SEC-WAR] Sandbox validation alert: Execute system evaluation modules exclusively inside decoupled virtual machinery (VirtualBox) running isolated air-gapped adapters.";
-    } else if (query.includes("HELLO") || query.includes("HELP")) {
-      botText = "[SYSTEM] Mainframe linkage clear. Operational status nominal.";
-    }
-
-    setTimeout(() => {
-      const botMsg = document.createElement('div');
-      botMsg.className = 'msg msg-bot';
-      botMsg.innerText = botText;
-      cLog.appendChild(botMsg);
-      cLog.scrollTop = cLog.scrollHeight;
-    }, 250);
-  }
-
-  if (cSend) cSend.onclick = handleTerminalSubmission;
-  if (cInput) cInput.onkeydown = (e) => { if(e.key === 'Enter') handleTerminalSubmission(); };
-
-  function tickTerminalClocks() {
+  // Clocks
+  setInterval(() => {
     const now = new Date();
-    const utcEl = document.getElementById('utc-time');
-    const istEl = document.getElementById('ist-time');
-    if (utcEl) utcEl.innerText = now.toISOString().substr(11, 8);
-    if (istEl) istEl.innerText = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
-  }
-  setInterval(tickTerminalClocks, 1000);
-  tickTerminalClocks();
+    document.getElementById('utc-time').innerText = now.toISOString().substr(11, 8);
+    document.getElementById('ist-time').innerText = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
+  }, 1000);
 
+  // Globe Render Engine
   const globe = Globe()(document.getElementById('globeViz'))
     .globeImageUrl('//://unpkg.com')
     .showAtmosphere(true)
-    .atmosphereColor('#1f6b45')
-    .atmosphereDaytimeDissolveRadius(1.2);
-
+    .atmosphereColor('#1f6b45');
   globe.controls().autoRotate = true;
   globe.controls().autoRotateSpeed = 0.5;
   globe.controls().enableZoom = false;
-
-  window.addEventListener('resize', () => {
-    const wrapper = document.getElementById('globeViz');
-    if(wrapper) {
-      globe.width(wrapper.offsetWidth);
-      globe.height(wrapper.offsetHeight);
-    }
-  });
 </script>
 </body>
 </html>
