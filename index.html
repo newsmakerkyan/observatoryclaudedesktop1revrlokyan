@@ -85,6 +85,10 @@
   }
   .panel-head .n{color:var(--phosphor); font-weight:600;}
   .panel-body{padding:12px 14px; font-family:var(--mono); font-size:12.5px;}
+  .panel-body.scrollable{max-height:280px; overflow-y:auto;}
+  .panel-body.scrollable::-webkit-scrollbar{width:6px;}
+  .panel-body.scrollable::-webkit-scrollbar-thumb{background:var(--phosphor-dim);}
+  .panel-body.scrollable::-webkit-scrollbar-track{background:var(--panel);}
 
   /* ---------- GLOBE ---------- */
   .globe-wrap{
@@ -373,7 +377,7 @@
 
     <div class="panel">
       <div class="panel-head">Atmospheric Stations <span class="n" id="stationCount">--</span></div>
-      <div class="panel-body" id="atmosList"><div class="loading">ACQUIRING SIGNAL…</div></div>
+      <div class="panel-body scrollable" id="atmosList"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
   </div>
 
@@ -411,17 +415,17 @@
         <div class="m"><div class="lbl">SILVER / OZ</div><div class="val" id="silverPrice">--</div></div>
       </div>
     </div>
-    <div class="fin-panel">
+    <div class="fin-panel fin-panel-wide">
       <h3>Currency — 1 USD</h3>
-      <div id="currencyList"><div class="skel"></div></div>
+      <div id="currencyList" class="fin-cols-2 panel-body scrollable" style="max-height:220px;"><div class="skel"></div></div>
     </div>
     <div class="fin-panel">
       <h3>Crypto Market</h3>
-      <div id="cryptoFinList"><div class="skel"></div></div>
+      <div id="cryptoFinList" class="panel-body scrollable" style="max-height:220px; padding:0;"><div class="skel"></div></div>
     </div>
     <div class="fin-panel">
       <h3>Market News</h3>
-      <div id="finNewsList"><div class="skel"></div></div>
+      <div id="finNewsList" class="panel-body scrollable" style="max-height:220px; padding:0;"><div class="skel"></div></div>
     </div>
   </div>
 </div>
@@ -618,13 +622,20 @@ function applySearchFilter(){
   });
   if(firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+// Debounced: with ~190+ searchable elements now (100 countries, 30 cities,
+// 30 currencies, etc.), re-scanning all of them on every single keystroke
+// caused visible lag. Waiting for a short pause in typing fixes it without
+// losing responsiveness.
+let searchDebounceTimer = null;
 document.getElementById('siteSearch').addEventListener('input', e => {
   currentSearchQuery = e.target.value;
-  applySearchFilter();
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(applySearchFilter, 150);
 });
 document.getElementById('siteSearchClear').addEventListener('click', () => {
   currentSearchQuery = '';
   document.getElementById('siteSearch').value = '';
+  clearTimeout(searchDebounceTimer);
   applySearchFilter();
 });
 
