@@ -263,6 +263,21 @@
   .country-card .cmeta{font-family:var(--mono); font-size:10px; color:var(--text-muted); margin-top:2px;}
   .country-card .cmeta b{color:var(--phosphor);}
 
+  /* ---------- SEARCH BAR (replaces the old header clocks) ---------- */
+  .search-bar{
+    flex:1; max-width:360px; display:flex; align-items:center; gap:8px;
+    border:1px solid var(--panel-edge); background:var(--panel); padding:7px 12px; margin:0 20px;
+  }
+  .search-bar .icon{color:var(--text-muted); font-size:12px;}
+  .search-bar input{
+    flex:1; background:transparent; border:none; outline:none; color:var(--text);
+    font-family:var(--mono); font-size:11.5px;
+  }
+  .search-bar input::placeholder{color:var(--text-muted);}
+  .search-bar .clear{cursor:pointer; color:var(--text-muted); font-size:11px; display:none;}
+  .search-bar .clear.show{display:inline;}
+  .dimmed{opacity:0.12; filter:grayscale(1); transition:opacity .15s ease;}
+
   /* ---------- CONNECTION STATUS ---------- */
   .conn-status{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted);}
   .conn-status .dot{width:7px; height:7px; border-radius:50%; background:var(--phosphor); box-shadow:0 0 5px var(--phosphor);}
@@ -282,7 +297,11 @@
   .clock-card .cplace{font-family:var(--sans); font-size:10px; color:var(--text-muted); margin-top:3px;}
 
   /* ---------- FINANCIAL DASHBOARD ---------- */
-  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:14px;}
+  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; align-items:start;}
+  .fin-panel-wide{grid-column: span 2;}
+  @media(max-width:700px){ .fin-panel-wide{grid-column: span 1;} }
+  .fin-cols-2{display:grid; grid-template-columns:1fr 1fr; gap:0 18px;}
+  .fin-cols-2 .fin-row{grid-column:auto;}
   .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px;}
   .fin-panel h3{margin:0 0 8px; font-family:var(--mono); font-size:10.5px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:500;}
   .fin-row{display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--grid); font-family:var(--mono); font-size:12px;}
@@ -313,19 +332,10 @@
       <small>Live planetary feed // unclassified</small>
     </div>
   </div>
-  <div class="clocks">
-    <div class="clockblock">
-      <span class="lbl">UTC</span>
-      <span class="time" id="clockUTC">--:--:--</span>
-    </div>
-    <div class="clockblock ist">
-      <span class="lbl">IST</span>
-      <span class="time" id="clockIST">--:--:--</span>
-    </div>
-    <div class="clockblock cst">
-      <span class="lbl">CST (CN)</span>
-      <span class="time" id="clockCST">--:--:--</span>
-    </div>
+  <div class="search-bar">
+    <span class="icon">⌕</span>
+    <input id="siteSearch" type="text" placeholder="Search the dashboard… (e.g. japan, gold, quake)" autocomplete="off">
+    <span class="clear" id="siteSearchClear">✕</span>
   </div>
   <div class="conn-status" id="connStatus"><span class="dot"></span><span id="connLabel">Online</span></div>
 </header>
@@ -388,15 +398,11 @@
 
 <!-- GLOBAL FINANCIAL DASHBOARD -->
 <div class="wide">
-  <div class="section-head">Global Financial Dashboard <span class="sub" id="finUpdated">indices · stocks · metals · currency · crypto</span></div>
+  <div class="section-head">Global Financial Dashboard <span class="sub" id="finUpdated">stocks · metals · currency · crypto</span></div>
   <div class="fin-grid">
-    <div class="fin-panel">
-      <h3>Major Indices</h3>
-      <div id="indicesList"><div class="skel"></div></div>
-    </div>
-    <div class="fin-panel">
+    <div class="fin-panel fin-panel-wide">
       <h3>Major Companies</h3>
-      <div id="stocksList"><div class="skel"></div></div>
+      <div id="stocksList" class="fin-cols-2"><div class="skel"></div></div>
     </div>
     <div class="fin-panel">
       <h3>Metals</h3>
@@ -446,7 +452,16 @@
   </div>
 </div>
 
-<footer>DATA · USGS &nbsp;/&nbsp; WHERETHEISS.AT &nbsp;/&nbsp; OPEN-METEO &nbsp;/&nbsp; COINGECKO &nbsp;/&nbsp; NOOZRA &nbsp;—&nbsp; REFRESHED CONTINUOUSLY, CLIENT-SIDE, NO SERVER</footer>
+<footer></footer>
+
+<div class="wide" style="margin: 8px 0 24px;">
+  <div class="panel">
+    <div class="panel-body" style="font-family:var(--sans); font-size:13px; line-height:1.6; text-align:center;">
+      Built by Kyan, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds.
+    </div>
+  </div>
+</div>
+
 
 <button id="chatToggle" aria-label="Open operator chat"><span class="pip"></span>◈</button>
 <div id="chatPanel">
@@ -473,28 +488,28 @@
 // means DST is handled correctly automatically (US/Europe shift with the
 // season; the rest don't), instead of hand-rolled UTC-offset math.
 const TIMEZONES = [
-  { id: 'clockUTC', label: 'UTC',        tz: 'UTC',                header: true },
-  { id: 'clockIST', label: 'IST',        tz: 'Asia/Kolkata',        header: true },
-  { id: 'clockCST', label: 'CST (CN)',   tz: 'Asia/Shanghai',       header: true },
-  { label: 'Japan',              tz: 'Asia/Tokyo',          place: 'Tokyo' },
-  { label: 'Singapore',          tz: 'Asia/Singapore',      place: 'Singapore' },
-  { label: 'Dubai',              tz: 'Asia/Dubai',          place: 'UAE' },
-  { label: 'Sydney',             tz: 'Australia/Sydney',    place: 'Australia' },
-  { label: 'Auckland',           tz: 'Pacific/Auckland',    place: 'New Zealand' },
-  { label: 'US Pacific',         tz: 'America/Los_Angeles', place: 'PT · UTC-8/-7' },
-  { label: 'US Mountain',        tz: 'America/Denver',      place: 'MT · UTC-7/-6' },
-  { label: 'US Central',         tz: 'America/Chicago',     place: 'CT · UTC-6/-5' },
-  { label: 'US Eastern',         tz: 'America/New_York',    place: 'ET · UTC-5/-4' },
-  { label: 'Western Europe',     tz: 'Europe/Lisbon',       place: 'WET · UTC+0/+1' },
-  { label: 'Central Europe',     tz: 'Europe/Paris',        place: 'CET · UTC+1/+2' },
-  { label: 'Eastern Europe',     tz: 'Europe/Athens',       place: 'EET · UTC+2/+3' },
-  { label: 'Further-East Europe',tz: 'Europe/Moscow',       place: 'MSK · UTC+3' },
+  { label: 'UTC',                 tz: 'UTC',                 place: 'Universal' },
+  { label: 'IST',                 tz: 'Asia/Kolkata',        place: 'India' },
+  { label: 'China (CST)',         tz: 'Asia/Shanghai',       place: 'Beijing' },
+  { label: 'Japan',               tz: 'Asia/Tokyo',          place: 'Tokyo' },
+  { label: 'Singapore',           tz: 'Asia/Singapore',      place: 'Singapore' },
+  { label: 'Dubai',               tz: 'Asia/Dubai',          place: 'UAE' },
+  { label: 'Sydney',              tz: 'Australia/Sydney',    place: 'Australia' },
+  { label: 'Auckland',            tz: 'Pacific/Auckland',    place: 'New Zealand' },
+  { label: 'US Pacific',          tz: 'America/Los_Angeles', place: 'PT · UTC-8/-7' },
+  { label: 'US Mountain',         tz: 'America/Denver',      place: 'MT · UTC-7/-6' },
+  { label: 'US Central',          tz: 'America/Chicago',     place: 'CT · UTC-6/-5' },
+  { label: 'US Eastern',          tz: 'America/New_York',    place: 'ET · UTC-5/-4' },
+  { label: 'Western Europe',      tz: 'Europe/Lisbon',       place: 'WET · UTC+0/+1' },
+  { label: 'Central Europe',      tz: 'Europe/Paris',        place: 'CET · UTC+1/+2' },
+  { label: 'Eastern Europe',      tz: 'Europe/Athens',       place: 'EET · UTC+2/+3' },
+  { label: 'Further-East Europe', tz: 'Europe/Moscow',       place: 'MSK · UTC+3' },
 ];
 function fmtTime(tz){
   return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(new Date());
 }
 function initClockGrid(){
-  document.getElementById('clockGrid').innerHTML = TIMEZONES.filter(z => !z.header).map(z => `
+  document.getElementById('clockGrid').innerHTML = TIMEZONES.map(z => `
     <div class="clock-card">
       <div class="czone">${z.label}</div>
       <div class="ctime" id="wc-${z.tz.replace(/\//g,'-')}">--:--:--</div>
@@ -504,7 +519,7 @@ function initClockGrid(){
 }
 function tickClock(){
   TIMEZONES.forEach(z => {
-    const el = document.getElementById(z.header ? z.id : `wc-${z.tz.replace(/\//g,'-')}`);
+    const el = document.getElementById(`wc-${z.tz.replace(/\//g,'-')}`);
     if(el) el.textContent = fmtTime(z.tz);
   });
 }
@@ -583,42 +598,100 @@ function stampUpdated(elId){
   if(el) el.textContent = `updated ${new Date().toLocaleTimeString()}`;
 }
 
+/* ================= SITE SEARCH (local keyword filter — NOT the AI) ================= */
+// Deliberately isolated from the Groq chatbot: this only dims/undims DOM
+// cards already on the page by matching their own text content. No network
+// call, no AI involved, so it can't hallucinate or introduce AI-generated
+// content — it's a plain UI filter.
+let currentSearchQuery = '';
+const SEARCHABLE_SELECTORS = ['.clock-card', '.country-card', '#atmosList .row', '.crypto-row', '.fin-row', '.news-item'];
+function applySearchFilter(){
+  const q = currentSearchQuery.trim().toLowerCase();
+  document.getElementById('siteSearchClear').classList.toggle('show', !!q);
+  let firstMatch = null;
+  SEARCHABLE_SELECTORS.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      const match = !q || el.textContent.toLowerCase().includes(q);
+      el.classList.toggle('dimmed', !match);
+      if(match && q && !firstMatch) firstMatch = el;
+    });
+  });
+  if(firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+document.getElementById('siteSearch').addEventListener('input', e => {
+  currentSearchQuery = e.target.value;
+  applySearchFilter();
+});
+document.getElementById('siteSearchClear').addEventListener('click', () => {
+  currentSearchQuery = '';
+  document.getElementById('siteSearch').value = '';
+  applySearchFilter();
+});
+
 /* ================= STATIC REFERENCE DATA ================= */
 // Country reference facts (capital, population, region) change rarely, so this
 // is hardcoded rather than fetched — avoids relying on country-data APIs that
 // increasingly require signup/keys, and it's instant with zero requests.
-// Population figures are approximate (millions).
+// Population figures are approximate (millions), rounded, and will drift
+// slightly out of date over time — treat as reference-scale, not precise.
 const COUNTRIES = [
-  ['us','United States','Washington, D.C.','North America',335],
-  ['cn','China','Beijing','Asia',1412],
-  ['in','India','New Delhi','Asia',1428],
-  ['br','Brazil','Brasília','South America',216],
-  ['ru','Russia','Moscow','Europe/Asia',144],
-  ['gb','United Kingdom','London','Europe',68],
-  ['fr','France','Paris','Europe',68],
-  ['de','Germany','Berlin','Europe',84],
-  ['jp','Japan','Tokyo','Asia',124],
-  ['ca','Canada','Ottawa','North America',39],
-  ['au','Australia','Canberra','Oceania',26],
-  ['it','Italy','Rome','Europe',59],
-  ['es','Spain','Madrid','Europe',47],
-  ['mx','Mexico','Mexico City','North America',128],
-  ['kr','South Korea','Seoul','Asia',52],
-  ['id','Indonesia','Jakarta','Asia',277],
-  ['sa','Saudi Arabia','Riyadh','Middle East',36],
-  ['tr','Turkey','Ankara','Europe/Asia',85],
-  ['eg','Egypt','Cairo','Africa',112],
-  ['ng','Nigeria','Abuja','Africa',223],
-  ['za','South Africa','Pretoria','Africa',60],
-  ['ar','Argentina','Buenos Aires','South America',46],
-  ['nl','Netherlands','Amsterdam','Europe',18],
-  ['ch','Switzerland','Bern','Europe',8.8],
-  ['se','Sweden','Stockholm','Europe',10.5],
-  ['no','Norway','Oslo','Europe',5.5],
-  ['ae','United Arab Emirates','Abu Dhabi','Middle East',9.5],
-  ['sg','Singapore','Singapore','Asia',5.9],
-  ['th','Thailand','Bangkok','Asia',71],
-  ['nz','New Zealand','Wellington','Oceania',5.2],
+  // Africa
+  ['ng','Nigeria','Abuja','Africa',223],['et','Ethiopia','Addis Ababa','Africa',126],
+  ['eg','Egypt','Cairo','Africa',112],['cd','DR Congo','Kinshasa','Africa',102],
+  ['tz','Tanzania','Dodoma','Africa',67],['za','South Africa','Pretoria','Africa',60],
+  ['ke','Kenya','Nairobi','Africa',55],['sd','Sudan','Khartoum','Africa',48],
+  ['ug','Uganda','Kampala','Africa',48],['dz','Algeria','Algiers','Africa',45],
+  ['ma','Morocco','Rabat','Africa',37],['ao','Angola','Luanda','Africa',36],
+  ['gh','Ghana','Accra','Africa',34],['mz','Mozambique','Maputo','Africa',33],
+  ['mg','Madagascar','Antananarivo','Africa',30],['ci','Côte d\u2019Ivoire','Yamoussoukro','Africa',29],
+  ['cm','Cameroon','Yaoundé','Africa',28],['ne','Niger','Niamey','Africa',27],
+  ['bf','Burkina Faso','Ouagadougou','Africa',23],['ml','Mali','Bamako','Africa',23],
+  ['mw','Malawi','Lilongwe','Africa',21],['zm','Zambia','Lusaka','Africa',20],
+  ['td','Chad','N\u2019Djamena','Africa',18],['sn','Senegal','Dakar','Africa',18],
+  ['so','Somalia','Mogadishu','Africa',18],['zw','Zimbabwe','Harare','Africa',16],
+  ['gn','Guinea','Conakry','Africa',14],['rw','Rwanda','Kigali','Africa',14],
+  ['bj','Benin','Porto-Novo','Africa',13],['bi','Burundi','Gitega','Africa',13],
+  ['tn','Tunisia','Tunis','Africa',12],['ss','South Sudan','Juba','Africa',11],
+  // Asia
+  ['in','India','New Delhi','Asia',1428],['cn','China','Beijing','Asia',1412],
+  ['id','Indonesia','Jakarta','Asia',277],['pk','Pakistan','Islamabad','Asia',241],
+  ['bd','Bangladesh','Dhaka','Asia',173],['jp','Japan','Tokyo','Asia',124],
+  ['ph','Philippines','Manila','Asia',117],['vn','Vietnam','Hanoi','Asia',99],
+  ['ir','Iran','Tehran','Asia',89],['tr','Turkey','Ankara','Asia',85],
+  ['th','Thailand','Bangkok','Asia',71],['mm','Myanmar','Naypyidaw','Asia',54],
+  ['kr','South Korea','Seoul','Asia',52],['iq','Iraq','Baghdad','Asia',45],
+  ['af','Afghanistan','Kabul','Asia',42],['sa','Saudi Arabia','Riyadh','Asia',36],
+  ['uz','Uzbekistan','Tashkent','Asia',35],['my','Malaysia','Kuala Lumpur','Asia',34],
+  ['ye','Yemen','Sana\u2019a','Asia',34],['np','Nepal','Kathmandu','Asia',30],
+  ['kp','North Korea','Pyongyang','Asia',26],['sy','Syria','Damascus','Asia',23],
+  ['tw','Taiwan','Taipei','Asia',23],['lk','Sri Lanka','Colombo','Asia',22],
+  ['kz','Kazakhstan','Astana','Asia',20],['kh','Cambodia','Phnom Penh','Asia',17],
+  ['jo','Jordan','Amman','Asia',11],['az','Azerbaijan','Baku','Asia',10.4],
+  ['sg','Singapore','Singapore','Asia',5.9],['kw','Kuwait','Kuwait City','Asia',4.3],
+  ['qa','Qatar','Doha','Asia',2.9],
+  // Europe
+  ['ru','Russia','Moscow','Europe',144],['de','Germany','Berlin','Europe',84],
+  ['fr','France','Paris','Europe',68],['gb','United Kingdom','London','Europe',68],
+  ['it','Italy','Rome','Europe',59],['es','Spain','Madrid','Europe',47],
+  ['pl','Poland','Warsaw','Europe',37],['ua','Ukraine','Kyiv','Europe',36],
+  ['ro','Romania','Bucharest','Europe',19],['nl','Netherlands','Amsterdam','Europe',18],
+  ['be','Belgium','Brussels','Europe',11.7],['cz','Czechia','Prague','Europe',10.9],
+  ['se','Sweden','Stockholm','Europe',10.5],['ch','Switzerland','Bern','Europe',8.8],
+  ['dk','Denmark','Copenhagen','Europe',5.9],['fi','Finland','Helsinki','Europe',5.6],
+  ['no','Norway','Oslo','Europe',5.5],['ie','Ireland','Dublin','Europe',5.1],
+  ['is','Iceland','Reykjavik','Europe',0.4],
+  // North America
+  ['us','United States','Washington, D.C.','North America',335],['mx','Mexico','Mexico City','North America',128],
+  ['ca','Canada','Ottawa','North America',39],['gt','Guatemala','Guatemala City','North America',18],
+  ['ht','Haiti','Port-au-Prince','North America',11.7],['do','Dominican Republic','Santo Domingo','North America',11.3],
+  ['cu','Cuba','Havana','North America',11],['hn','Honduras','Tegucigalpa','North America',10.6],
+  // South America
+  ['br','Brazil','Brasília','South America',216],['co','Colombia','Bogotá','South America',52],
+  ['ar','Argentina','Buenos Aires','South America',46],['pe','Peru','Lima','South America',34],
+  ['ve','Venezuela','Caracas','South America',28.3],['cl','Chile','Santiago','South America',19.6],
+  ['ec','Ecuador','Quito','South America',18],['bo','Bolivia','Sucre','South America',12],
+  // Oceania
+  ['au','Australia','Canberra','Oceania',26],['nz','New Zealand','Wellington','Oceania',5.2],
 ];
 
 // WMO weather codes (used by Open-Meteo) mapped to a short description + symbol
@@ -738,6 +811,7 @@ async function loadMarkets(){
         <span class="vol">Vol $${(c.total_volume/1e9).toFixed(1)}B</span>
       </div>`;
     }).join('');
+    applySearchFilter();
 
     const btc = byId.bitcoin, eth = byId.ethereum;
     if(btc && eth){
@@ -755,7 +829,15 @@ async function loadMarkets(){
 // This one free endpoint conveniently covers both fiat currency pairs AND
 // gold/silver spot rates (XAU/XAG are quoted like currencies), so currency
 // exchange and the metals panel share a single request — no backend needed.
-const CURRENCY_PAIRS = ['EUR','GBP','INR','JPY','CNY','AED'];
+// 30 major world currencies — the underlying API needs no key and covers
+// standard ISO 4217 codes broadly; any code it doesn't have just renders as
+// "—" rather than breaking the panel (same graceful-fallback pattern as
+// everywhere else in this project).
+const CURRENCY_PAIRS = [
+  'EUR','GBP','INR','JPY','CNY','AED','AUD','CAD','CHF','SGD',
+  'HKD','NZD','SEK','NOK','DKK','ZAR','BRL','MXN','RUB','KRW',
+  'TRY','THB','IDR','MYR','PHP','PLN','ILS','SAR','PKR','EGP',
+];
 async function loadCurrencyAndMetals(){
   try{
     const d = await resilientFetch('https://api.exchangerate.fun/latest?base=USD');
@@ -781,14 +863,11 @@ async function loadCurrencyAndMetals(){
 // free-tier provider (Twelve Data, 800 req/day) proxied through a serverless
 // function so the key is never exposed. Data may lag a little on the free
 // tier and any symbol the plan doesn't cover just shows "—" instead of
-// breaking the panel. If /api isn't deployed (e.g. you're just opening this
-// file locally), these two panels show a clear "backend not connected" note.
-const INDEX_LABELS = { SPX:'S&P 500', DJI:'Dow Jones', IXIC:'Nasdaq', FTSE:'FTSE 100', GDAXI:'DAX', FCHI:'CAC 40', N225:'Nikkei 225', HSI:'Hang Seng', SHCOMP:'Shanghai Comp.' };
 const STOCK_LABELS = { AAPL:'Apple', MSFT:'Microsoft', GOOGL:'Google', AMZN:'Amazon', NVDA:'Nvidia', TSLA:'Tesla', META:'Meta', NFLX:'Netflix' };
-function renderFinRows(containerId, labels, values){
+function renderFinRows(containerId, labels, values, simulated){
   const rows = Object.entries(labels).map(([sym,name]) => {
     const v = values?.[sym];
-    if(!v) return `<div class="fin-row"><span class="sym">${name}</span><span class="px">—</span></div>`;
+    if(!v || simulated) return `<div class="fin-row"><span class="sym">${name}</span><span class="px" style="color:var(--text-muted)">— sim</span></div>`;
     const cls = v.change >= 0 ? 'up' : 'down'; const arrow = v.change >= 0 ? '▲' : '▼';
     return `<div class="fin-row"><span class="sym">${name}</span><span class="px ${cls}">${v.price.toFixed(2)} ${arrow}${Math.abs(v.change).toFixed(1)}%</span></div>`;
   });
@@ -798,13 +877,15 @@ async function loadFinance(){
   try{
     const d = await resilientFetch('/api/finance');
     DATA.finance = d;
-    renderFinRows('indicesList', INDEX_LABELS, d.indices);
-    renderFinRows('stocksList', STOCK_LABELS, d.stocks);
-    stampUpdated('finUpdated');
+    renderFinRows('stocksList', STOCK_LABELS, d.stocks, d.simulated);
+    applySearchFilter();
+    // Be honest in the UI when this is placeholder data, not real quotes —
+    // a convincing-looking fake number is worse than no number at all.
+    document.getElementById('finUpdated').textContent = d.simulated
+      ? 'stocks: NO LIVE BACKEND — showing placeholders, not real prices'
+      : `updated ${new Date().toLocaleTimeString()}`;
   }catch(e){
-    const note = '<div class="loading">BACKEND NOT CONNECTED — see README to deploy /api/finance.js</div>';
-    document.getElementById('indicesList').innerHTML = note;
-    document.getElementById('stocksList').innerHTML = note;
+    document.getElementById('stocksList').innerHTML = '<div class="loading">BACKEND NOT CONNECTED — see README to deploy /api/finance.js</div>';
   }
 }
 
@@ -813,8 +894,9 @@ async function loadFinNews(){
   try{
     const d = await resilientFetch('https://noozra.com/api/articles?category=business&limit=5');
     document.getElementById('finNewsList').innerHTML = d.articles.slice(0,5).map(a =>
-      `<div class="fin-row"><a href="${a.url}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;font-size:11px;">${a.headline}</a></div>`
+      `<div class="fin-row"><a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--text);text-decoration:none;font-size:11px;">${escapeHtml(a.headline)}</a></div>`
     ).join('');
+    applySearchFilter();
   }catch(e){
     document.getElementById('finNewsList').innerHTML = '<div class="loading">SIGNAL LOST — RETRYING…</div>';
   }
@@ -822,12 +904,36 @@ async function loadFinNews(){
 
 /* ================= ATMOSPHERE (Open-Meteo) ================= */
 const STATIONS = [
-  { name:'New York',  lat:40.71, lng:-74.01 },
-  { name:'London',    lat:51.51, lng:-0.13 },
-  { name:'Delhi',     lat:28.61, lng:77.21 },
-  { name:'Tokyo',     lat:35.68, lng:139.69 },
-  { name:'São Paulo', lat:-23.55, lng:-46.63 },
-  { name:'Sydney',    lat:-33.87, lng:151.21 },
+  { name:'New York',      lat:40.71,  lng:-74.01 },
+  { name:'London',        lat:51.51,  lng:-0.13 },
+  { name:'Delhi',         lat:28.61,  lng:77.21 },
+  { name:'Tokyo',         lat:35.68,  lng:139.69 },
+  { name:'São Paulo',     lat:-23.55, lng:-46.63 },
+  { name:'Sydney',        lat:-33.87, lng:151.21 },
+  { name:'Paris',         lat:48.85,  lng:2.35 },
+  { name:'Cairo',         lat:30.04,  lng:31.24 },
+  { name:'Mumbai',        lat:19.08,  lng:72.88 },
+  { name:'Dubai',         lat:25.20,  lng:55.27 },
+  { name:'Singapore',     lat:1.35,   lng:103.82 },
+  { name:'Rio de Janeiro',lat:-22.91, lng:-43.17 },
+  { name:'Moscow',        lat:55.76,  lng:37.62 },
+  { name:'Beijing',       lat:39.90,  lng:116.41 },
+  { name:'Shanghai',      lat:31.23,  lng:121.47 },
+  { name:'Seoul',         lat:37.57,  lng:126.98 },
+  { name:'Bangkok',       lat:13.76,  lng:100.50 },
+  { name:'Jakarta',       lat:-6.21,  lng:106.85 },
+  { name:'Lagos',         lat:6.52,   lng:3.38 },
+  { name:'Nairobi',       lat:-1.29,  lng:36.82 },
+  { name:'Johannesburg',  lat:-26.20, lng:28.05 },
+  { name:'Istanbul',      lat:41.01,  lng:28.98 },
+  { name:'Berlin',        lat:52.52,  lng:13.40 },
+  { name:'Madrid',        lat:40.42,  lng:-3.70 },
+  { name:'Rome',          lat:41.90,  lng:12.50 },
+  { name:'Toronto',       lat:43.65,  lng:-79.38 },
+  { name:'Mexico City',   lat:19.43,  lng:-99.13 },
+  { name:'Buenos Aires',  lat:-34.60, lng:-58.38 },
+  { name:'Los Angeles',   lat:34.05,  lng:-118.24 },
+  { name:'Auckland',      lat:-36.85, lng:174.76 },
 ];
 async function loadAtmos(){
   try{
@@ -844,6 +950,7 @@ async function loadAtmos(){
       </div>
     `).join('');
     DATA.atmos = results;
+    applySearchFilter();
     const hottest = results.reduce((a,b) => b.temp > a.temp ? b : a);
     tickerItems[3] = `WARMEST STATION: <b>${hottest.name} ${hottest.temp.toFixed(0)}°C</b>`;
     updateTicker();
@@ -908,6 +1015,23 @@ async function loadWeatherDetail(index){
 
 /* ================= NEWS WIRE (Noozra — no key, 100 req/day/IP) ================= */
 let currentNewsCat = 'general';
+/* ================= INPUT/OUTPUT SANITIZATION ================= */
+// Every other panel renders data we control (numbers we formatted ourselves).
+// News headlines/sources/URLs come from a third-party API though, so treat
+// them as untrusted: escape any text before it goes into innerHTML, and
+// only allow http(s) URLs into href attributes (blocks a javascript: URI or
+// an injected <script>/onerror= attribute from a compromised or malicious
+// feed from ever executing).
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function safeUrl(url){
+  try{
+    const u = new URL(url, location.href);
+    return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '#';
+  }catch{ return '#'; }
+}
+
 function timeAgo(iso){
   const mins = Math.max(1, Math.round((Date.now() - new Date(iso)) / 60000));
   if(mins < 60) return `${mins}m ago`;
@@ -919,18 +1043,25 @@ async function loadNews(cat){
   currentNewsCat = cat || currentNewsCat;
   const list = document.getElementById('newsList');
   try{
-    const res = await fetch(`https://noozra.com/api/articles?category=${currentNewsCat}&limit=12`);
+    const res = await fetch(`https://noozra.com/api/articles?category=${encodeURIComponent(currentNewsCat)}&limit=12`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
+    if(!Array.isArray(d.articles)) throw new Error('unexpected response shape');
     DATA.news = d.articles;
     list.innerHTML = d.articles.map(a => `
       <div class="news-item">
-        <a href="${a.url}" target="_blank" rel="noopener">${a.headline}</a>
-        <div class="meta"><b>${a.source}</b> · ${timeAgo(a.published_at)}</div>
+        <a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.headline)}</a>
+        <div class="meta"><b>${escapeHtml(a.source)}</b> · ${timeAgo(a.published_at)}</div>
       </div>
     `).join('');
     document.getElementById('newsUpdated').textContent = `updated ${new Date().toLocaleTimeString()}`;
+    applySearchFilter();
   }catch(e){
-    list.innerHTML = '<div class="loading">SIGNAL LOST — RETRYING…</div>';
+    // Show the real reason instead of a generic message — a 429 here almost
+    // always means Noozra's free 100/day-per-IP cap was hit (easy to do
+    // while actively testing/refreshing a lot), not that anything is broken.
+    const reason = e.message.includes('429') ? 'RATE LIMIT HIT (100/day free cap) — try again later' : `SIGNAL LOST (${e.message}) — RETRYING…`;
+    list.innerHTML = `<div class="loading">${reason}</div>`;
   }
 }
 document.querySelectorAll('#newsCats button').forEach(btn => {
@@ -953,7 +1084,9 @@ function renderCountries(){
       </div>
     </div>
   `).join('');
+  applySearchFilter();
 }
+
 
 /* ================= OPERATOR CHATBOT ================= */
 // Fully client-side, zero cost, no API key: answers by reading the same
@@ -977,7 +1110,7 @@ function respond(raw){
 
   if(!q) return "Ask me about the ISS, quakes, crypto, weather, or the time.";
 
-  if(/(hi|hello|hey)\b/.test(q)) return "Online and listening. Try: \"ISS\", \"biggest quake\", \"btc\", \"delhi weather\", or \"time\".";
+  if(/\b(hi|hello|hey)\b/.test(q)) return "Online and listening. Try: \"ISS\", \"biggest quake\", \"btc\", \"delhi weather\", or \"time\".";
 
   if(q.includes('iss') || q.includes('space station')){
     const d = DATA.iss;
@@ -1022,13 +1155,6 @@ function respond(raw){
     const sym = STOCK_NAMES[stockHit];
     const v = DATA.finance?.stocks?.[sym];
     return v ? `${sym} $${v.price.toFixed(2)} (${v.change>=0?'+':''}${v.change.toFixed(1)}% today).` : `${sym} data not available (backend not connected, or free-tier limit).`;
-  }
-  const INDEX_NAMES = { 'sp500':'SPX', 's&p':'SPX', 'dow':'DJI', 'nasdaq':'IXIC', 'ftse':'FTSE', 'dax':'GDAXI', 'cac':'FCHI', 'nikkei':'N225', 'hang seng':'HSI', 'shanghai':'SHCOMP' };
-  const idxHit = Object.keys(INDEX_NAMES).find(k => q.includes(k));
-  if(idxHit){
-    const sym = INDEX_NAMES[idxHit];
-    const v = DATA.finance?.indices?.[sym];
-    return v ? `${sym} ${v.price.toFixed(2)} (${v.change>=0?'+':''}${v.change.toFixed(1)}% today).` : `${sym} data not available (backend not connected, or free-tier limit).`;
   }
 
   const station = findStation(q);
