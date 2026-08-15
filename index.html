@@ -61,6 +61,7 @@
     display:grid;
     grid-template-columns: 300px minmax(0,1fr) 300px;
     gap:16px; padding:16px 22px; max-width:1500px; margin:0 auto;
+    align-items:start;
   }
   @media(max-width:1000px){ .grid{grid-template-columns:1fr;} }
 
@@ -85,10 +86,6 @@
   }
   .panel-head .n{color:var(--phosphor); font-weight:600;}
   .panel-body{padding:12px 14px; font-family:var(--mono); font-size:12.5px;}
-  .panel-body.scrollable{max-height:280px; overflow-y:auto;}
-  .panel-body.scrollable::-webkit-scrollbar{width:6px;}
-  .panel-body.scrollable::-webkit-scrollbar-thumb{background:var(--phosphor-dim);}
-  .panel-body.scrollable::-webkit-scrollbar-track{background:var(--panel);}
 
   /* ---------- GLOBE ---------- */
   .globe-wrap{
@@ -267,20 +264,17 @@
   .country-card .cmeta{font-family:var(--mono); font-size:10px; color:var(--text-muted); margin-top:2px;}
   .country-card .cmeta b{color:var(--phosphor);}
 
-  /* ---------- SEARCH BAR (replaces the old header clocks) ---------- */
-  .search-bar{
-    flex:1; max-width:360px; display:flex; align-items:center; gap:8px;
+  /* ---------- NAV DROPDOWN (replaces the old keyword search bar) ---------- */
+  .nav-dropdown{
+    flex:1; max-width:280px; display:flex; align-items:center; gap:8px;
     border:1px solid var(--panel-edge); background:var(--panel); padding:7px 12px; margin:0 20px;
   }
-  .search-bar .icon{color:var(--text-muted); font-size:12px;}
-  .search-bar input{
+  .nav-dropdown .icon{color:var(--text-muted); font-size:12px;}
+  .nav-dropdown select{
     flex:1; background:transparent; border:none; outline:none; color:var(--text);
-    font-family:var(--mono); font-size:11.5px;
+    font-family:var(--mono); font-size:11.5px; cursor:pointer;
   }
-  .search-bar input::placeholder{color:var(--text-muted);}
-  .search-bar .clear{cursor:pointer; color:var(--text-muted); font-size:11px; display:none;}
-  .search-bar .clear.show{display:inline;}
-  .dimmed{opacity:0.12; filter:grayscale(1); transition:opacity .15s ease;}
+  .nav-dropdown select option{background:var(--panel); color:var(--text);}
 
   /* ---------- CONNECTION STATUS ---------- */
   .conn-status{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted);}
@@ -306,6 +300,23 @@
   @media(max-width:700px){ .fin-panel-wide{grid-column: span 1;} }
   .fin-cols-2{display:grid; grid-template-columns:1fr 1fr; gap:0 18px;}
   .fin-cols-2 .fin-row{grid-column:auto;}
+  .fin-cols-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 14px;}
+  .fin-cols-3 .fin-row{grid-column:auto; font-size:11px;}
+  .atmos-tight .row{padding:5px 0;}
+
+  /* ---------- FESTIVALS ---------- */
+  .festival-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:10px;}
+  .festival-card{
+    border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .festival-card.today{border-color:var(--amber); box-shadow:0 0 10px rgba(255,176,32,0.15);}
+  .festival-card .fflag{width:30px; height:20px; object-fit:cover; border:1px solid var(--panel-edge); flex-shrink:0;}
+  .festival-card .fglobe{width:30px; height:20px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;}
+  .festival-card .fname{font-family:var(--sans); font-size:12.5px; color:var(--text); font-weight:600;}
+  .festival-card .fdate{font-family:var(--mono); font-size:10px; color:var(--text-muted); margin-top:2px;}
+  .festival-card .fcount{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--phosphor); text-align:right; white-space:nowrap;}
+  .festival-card.today .fcount{color:var(--amber); font-weight:700;}
   .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px;}
   .fin-panel h3{margin:0 0 8px; font-family:var(--mono); font-size:10.5px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:500;}
   .fin-row{display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--grid); font-family:var(--mono); font-size:12px;}
@@ -336,10 +347,21 @@
       <small>Live planetary feed // unclassified</small>
     </div>
   </div>
-  <div class="search-bar">
-    <span class="icon">⌕</span>
-    <input id="siteSearch" type="text" placeholder="Search the dashboard… (e.g. japan, gold, quake)" autocomplete="off">
-    <span class="clear" id="siteSearchClear">✕</span>
+  <div class="nav-dropdown">
+    <span class="icon">☰</span>
+    <select id="sectionNav">
+      <option value="">Jump to section…</option>
+      <option value="sec-seismic">Seismic Activity</option>
+      <option value="sec-iss">ISS Orbit Data</option>
+      <option value="sec-clocks">World Clocks</option>
+      <option value="sec-weather">Weather Analysis</option>
+      <option value="sec-finance">Financial Dashboard</option>
+      <option value="sec-finance-crypto">Crypto Market</option>
+      <option value="sec-news">Global News</option>
+      <option value="sec-festivals">Festivals &amp; Observances</option>
+      <option value="sec-almanac">World Almanac</option>
+      <option value="__chat">AI Chat (Operator)</option>
+    </select>
   </div>
   <div class="conn-status" id="connStatus"><span class="dot"></span><span id="connLabel">Online</span></div>
 </header>
@@ -348,7 +370,7 @@
 
   <!-- LEFT COLUMN -->
   <div class="col">
-    <div class="panel">
+    <div class="panel" id="sec-seismic">
       <div class="panel-head">Seismic Activity <span class="n" id="quakeCount">--</span></div>
       <div class="panel-body" id="quakeList"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
@@ -370,27 +392,27 @@
 
   <!-- RIGHT COLUMN -->
   <div class="col">
-    <div class="panel">
+    <div class="panel" id="sec-iss">
       <div class="panel-head">ISS Orbit Data <span class="n">LIVE</span></div>
       <div class="panel-body" id="issData"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
 
     <div class="panel">
       <div class="panel-head">Atmospheric Stations <span class="n" id="stationCount">--</span></div>
-      <div class="panel-body scrollable" id="atmosList"><div class="loading">ACQUIRING SIGNAL…</div></div>
+      <div class="panel-body atmos-tight" id="atmosList"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
   </div>
 
 </div>
 
 <!-- WORLD CLOCKS -->
-<div class="wide">
+<div class="wide" id="sec-clocks">
   <div class="section-head">World Clocks <span class="sub">DST-aware · updates every second</span></div>
   <div class="clock-grid" id="clockGrid"></div>
 </div>
 
 <!-- WEATHER ANALYSIS -->
-<div class="wide">
+<div class="wide" id="sec-weather">
   <div class="section-head">Weather Analysis <span class="sub">4-day forecast · humidity · wind · UV</span></div>
   <div class="wx-controls">
     <select id="wxCity"></select>
@@ -401,7 +423,7 @@
 </div>
 
 <!-- GLOBAL FINANCIAL DASHBOARD -->
-<div class="wide">
+<div class="wide" id="sec-finance">
   <div class="section-head">Global Financial Dashboard <span class="sub" id="finUpdated">stocks · metals · currency · crypto</span></div>
   <div class="fin-grid">
     <div class="fin-panel fin-panel-wide">
@@ -417,21 +439,21 @@
     </div>
     <div class="fin-panel fin-panel-wide">
       <h3>Currency — 1 USD</h3>
-      <div id="currencyList" class="fin-cols-2 panel-body scrollable" style="max-height:220px;"><div class="skel"></div></div>
+      <div id="currencyList" class="fin-cols-3 panel-body"><div class="skel"></div></div>
     </div>
-    <div class="fin-panel">
+    <div class="fin-panel" id="sec-finance-crypto">
       <h3>Crypto Market</h3>
-      <div id="cryptoFinList" class="panel-body scrollable" style="max-height:220px; padding:0;"><div class="skel"></div></div>
+      <div id="cryptoFinList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
     </div>
     <div class="fin-panel">
       <h3>Market News</h3>
-      <div id="finNewsList" class="panel-body scrollable" style="max-height:220px; padding:0;"><div class="skel"></div></div>
+      <div id="finNewsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
     </div>
   </div>
 </div>
 
 <!-- NEWS WIRE -->
-<div class="wide">
+<div class="wide" id="sec-news">
   <div class="section-head">Global News Wire <span class="sub" id="newsUpdated">live headlines</span></div>
   <div class="news-cats" id="newsCats">
     <button data-cat="general" class="active">General</button>
@@ -444,9 +466,15 @@
   <div class="news-list" id="newsList"><div class="loading">ACQUIRING SIGNAL…</div></div>
 </div>
 
+<!-- FESTIVALS & LIVE OBSERVANCES -->
+<div class="wide" id="sec-festivals">
+  <div class="section-head">Global Festivals &amp; Observances <span class="sub" id="festivalsUpdated">real public holidays, worldwide</span></div>
+  <div class="festival-grid" id="festivalGrid"><div class="skel"></div></div>
+</div>
+
 <!-- WORLD ALMANAC -->
-<div class="wide">
-  <div class="section-head">World Almanac <span class="sub">30 most prominent nations · reference data</span></div>
+<div class="wide" id="sec-almanac">
+  <div class="section-head">World Almanac <span class="sub">100 most prominent nations · reference data</span></div>
   <div class="country-grid" id="countryGrid"></div>
 </div>
 
@@ -562,7 +590,7 @@ world.controls().autoRotate = true;
 world.controls().autoRotateSpeed = 0.35;
 
 /* ================= SHARED LIVE DATA (used by clock + chatbot) ================= */
-const DATA = { quakes: [], iss: null, markets: null, atmos: [], news: [], countries: [], currency: null, finance: null };
+const DATA = { quakes: [], iss: null, markets: null, atmos: [], news: [], countries: [], currency: null, finance: null, festivals: [] };
 
 /* ================= RELIABILITY: resilient fetch + connection status ================= */
 // Shared wrapper used by every loader below: adds a timeout, one retry on
@@ -602,41 +630,23 @@ function stampUpdated(elId){
   if(el) el.textContent = `updated ${new Date().toLocaleTimeString()}`;
 }
 
-/* ================= SITE SEARCH (local keyword filter — NOT the AI) ================= */
-// Deliberately isolated from the Groq chatbot: this only dims/undims DOM
-// cards already on the page by matching their own text content. No network
-// call, no AI involved, so it can't hallucinate or introduce AI-generated
-// content — it's a plain UI filter.
-let currentSearchQuery = '';
-const SEARCHABLE_SELECTORS = ['.clock-card', '.country-card', '#atmosList .row', '.crypto-row', '.fin-row', '.news-item'];
-function applySearchFilter(){
-  const q = currentSearchQuery.trim().toLowerCase();
-  document.getElementById('siteSearchClear').classList.toggle('show', !!q);
-  let firstMatch = null;
-  SEARCHABLE_SELECTORS.forEach(sel => {
-    document.querySelectorAll(sel).forEach(el => {
-      const match = !q || el.textContent.toLowerCase().includes(q);
-      el.classList.toggle('dimmed', !match);
-      if(match && q && !firstMatch) firstMatch = el;
-    });
-  });
-  if(firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-// Debounced: with ~190+ searchable elements now (100 countries, 30 cities,
-// 30 currencies, etc.), re-scanning all of them on every single keystroke
-// caused visible lag. Waiting for a short pause in typing fixes it without
-// losing responsiveness.
-let searchDebounceTimer = null;
-document.getElementById('siteSearch').addEventListener('input', e => {
-  currentSearchQuery = e.target.value;
-  clearTimeout(searchDebounceTimer);
-  searchDebounceTimer = setTimeout(applySearchFilter, 150);
-});
-document.getElementById('siteSearchClear').addEventListener('click', () => {
-  currentSearchQuery = '';
-  document.getElementById('siteSearch').value = '';
-  clearTimeout(searchDebounceTimer);
-  applySearchFilter();
+/* ================= SECTION NAVIGATION (replaces the old keyword search) ================= */
+// The free-text keyword filter was replaced with a simple, reliable jump-to-
+// section dropdown per feedback that the search had too many edge cases.
+// applySearchFilter is kept as a harmless no-op so the many render functions
+// that call it after loading data don't need to be touched individually.
+function applySearchFilter(){ /* no-op — kept for compatibility with existing call sites */ }
+
+document.getElementById('sectionNav').addEventListener('change', e => {
+  const target = e.target.value;
+  if(!target) return;
+  if(target === '__chat'){
+    document.getElementById('chatPanel').classList.add('open');
+  } else {
+    const el = document.getElementById(target);
+    if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  e.target.value = ''; // reset to placeholder so the same option can be picked again
 });
 
 /* ================= STATIC REFERENCE DATA ================= */
@@ -831,8 +841,13 @@ async function loadMarkets(){
     }
     stampUpdated('finUpdated');
   }catch(e){
-    document.getElementById('marketList').innerHTML = '<div class="loading">SIGNAL LOST — RETRYING…</div>';
-    document.getElementById('cryptoFinList').innerHTML = '<div class="loading">SIGNAL LOST — RETRYING…</div>';
+    // CoinGecko's free tier rate-limits fairly aggressively (~10-30 req/min
+    // per IP) — a 429 here almost always means that cap was hit from testing/
+    // refreshing a lot, not a real outage. Showing the real reason instead of
+    // a generic message saves a lot of guessing.
+    const reason = e.message.includes('429') ? 'RATE LIMITED (CoinGecko free tier) — try again in a minute' : `SIGNAL LOST (${e.message})`;
+    document.getElementById('marketList').innerHTML = `<div class="loading">${reason}</div>`;
+    document.getElementById('cryptoFinList').innerHTML = `<div class="loading">${reason}</div>`;
   }
 }
 
@@ -1083,6 +1098,73 @@ document.querySelectorAll('#newsCats button').forEach(btn => {
   });
 });
 
+/* ================= FESTIVALS & LIVE OBSERVANCES ================= */
+// Real public holidays come from the /api/festivals backend (Nager.Date,
+// genuinely free/no-key, proxied server-side to dodge its CORS quirks).
+// "International days" like Friendship Day aren't official public holidays
+// anywhere, so Nager.Date won't have them — this small fixed list fills that
+// gap, computed client-side (their dates repeat every year, nothing to fetch).
+const INTERNATIONAL_DAYS = [
+  { name: "International Women's Day", month: 3, day: 8 },
+  { name: 'World Health Day',          month: 4, day: 7 },
+  { name: 'Earth Day',                 month: 4, day: 22 },
+  { name: 'International Yoga Day',    month: 6, day: 21 },
+  { name: 'International Friendship Day', month: 7, day: 30 },
+  { name: 'International Peace Day',   month: 9, day: 21 },
+  { name: 'Human Rights Day',          month: 12, day: 10 },
+];
+function nextOccurrenceISO(month, day){
+  const now = new Date();
+  const todayISO = now.toISOString().slice(0,10);
+  const y = now.getFullYear();
+  const pad = n => String(n).padStart(2,'0');
+  let iso = `${y}-${pad(month)}-${pad(day)}`;
+  if(iso < todayISO) iso = `${y+1}-${pad(month)}-${pad(day)}`;
+  return iso;
+}
+function daysUntil(iso){
+  const today = new Date(new Date().toISOString().slice(0,10));
+  const target = new Date(iso);
+  return Math.round((target - today) / 86400000);
+}
+async function loadFestivals(){
+  const grid = document.getElementById('festivalGrid');
+  try{
+    const d = await resilientFetch('/api/festivals');
+    DATA.festivals = d.holidays || [];
+
+    const intlEntries = INTERNATIONAL_DAYS.map(o => ({
+      date: nextOccurrenceISO(o.month, o.day), name: o.name, countryCode: null,
+      isToday: nextOccurrenceISO(o.month, o.day) === new Date().toISOString().slice(0,10),
+    }));
+
+    const combined = [...DATA.festivals, ...intlEntries]
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .slice(0, 18);
+
+    grid.innerHTML = combined.map(h => {
+      const n = daysUntil(h.date);
+      const countLabel = h.isToday ? 'TODAY' : n === 1 ? 'in 1 day' : `in ${n} days`;
+      const icon = h.countryCode
+        ? `<img class="fflag" src="https://flagcdn.com/w40/${h.countryCode.toLowerCase()}.png" alt="${h.countryCode} flag">`
+        : `<div class="fglobe">🌐</div>`;
+      return `<div class="festival-card ${h.isToday ? 'today' : ''}">
+        ${icon}
+        <div>
+          <div class="fname">${escapeHtml(h.name)}</div>
+          <div class="fdate">${h.date}${h.countryCode ? ' · ' + h.countryCode : ' · International'}</div>
+        </div>
+        <div class="fcount">${countLabel}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('festivalsUpdated').textContent = `updated ${new Date().toLocaleTimeString()}`;
+    applySearchFilter();
+  }catch(e){
+    const reason = e.message.includes('404') ? 'api/festivals.js not deployed yet — see chat for upload steps' : `SIGNAL LOST (${e.message})`;
+    grid.innerHTML = `<div class="loading">${reason}</div>`;
+  }
+}
+
 /* ================= WORLD ALMANAC (static reference data) ================= */
 function renderCountries(){
   DATA.countries = COUNTRIES.map(([code,name,capital,region,pop]) => ({code,name,capital,region,pop}));
@@ -1189,6 +1271,12 @@ function respond(raw){
   if(country) return `${country.name}: capital ${country.capital}, population ~${country.pop}M, region ${country.region}.`;
   if(q.includes('country') || q.includes('countries') || q.includes('almanac')) return `Tracking ${DATA.countries.length} countries. Ask by name, e.g. "japan" or "brazil".`;
 
+  if(q.includes('festival') || q.includes('holiday') || q.includes('diwali') || q.includes('christmas') || q.includes('independence day')){
+    if(!DATA.festivals.length) return "Festival data not yet acquired — ask again shortly.";
+    const next = DATA.festivals[0];
+    return `Next up: ${next.name}${next.countryCode ? ' (' + next.countryCode + ')' : ''} on ${next.date}${next.isToday ? ' — that\'s today!' : ''}.`;
+  }
+
   if(q.includes('help') || q === '?') return "Try: ISS, quake, btc, a stock/index name, gold, currency, [city] weather, news, a country name, or time. Anything else gets routed to the AI.";
 
   // No rule matched — return null so handleSend() falls through to the
@@ -1268,6 +1356,7 @@ renderCountries();
 loadCurrencyAndMetals();
 loadFinance();
 loadFinNews();
+loadFestivals();
 setInterval(loadQuakes, 5 * 60 * 1000);        // every 5 min
 setInterval(loadISS, 5 * 1000);                // every 5 sec (fast mover)
 setInterval(loadMarkets, 60 * 1000);           // every 60 sec
@@ -1275,8 +1364,9 @@ setInterval(loadAtmos, 10 * 60 * 1000);        // every 10 min
 setInterval(() => loadWeatherDetail(+document.getElementById('wxCity').value), 10 * 60 * 1000); // every 10 min
 setInterval(() => loadNews(currentNewsCat), 4 * 60 * 1000);   // every 4 min — stays well under Noozra's 100/day cap
 setInterval(loadCurrencyAndMetals, 10 * 60 * 1000);           // every 10 min — no key, generous limits
-setInterval(loadFinance, 20 * 60 * 1000);                     // every 20 min — respects Twelve Data's 800/day free cap
+setInterval(loadFinance, 20 * 60 * 1000);                     // every 20 min — respects Finnhub's 60/min free cap with room to spare
 setInterval(loadFinNews, 6 * 60 * 1000);                      // every 6 min
+setInterval(loadFestivals, 6 * 60 * 60 * 1000);               // every 6 hours — holiday data barely changes
 </script>
 
 </body>
