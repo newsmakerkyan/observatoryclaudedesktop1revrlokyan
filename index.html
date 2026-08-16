@@ -385,6 +385,11 @@
       <div class="panel-head">Markets <span class="n">USD</span></div>
       <div class="panel-body" id="marketList"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
+
+    <div class="panel">
+      <div class="panel-head">Sunlight <span class="n" id="sunlightCity">--</span></div>
+      <div class="panel-body" id="sunlightData"><div class="loading">ACQUIRING SIGNAL…</div></div>
+    </div>
   </div>
 
   <!-- CENTER: GLOBE -->
@@ -810,9 +815,9 @@ async function loadISS(){
 
 /* ================= MARKETS (CoinGecko) ================= */
 async function loadMarkets(){
-  const coins = ['bitcoin','ethereum','solana','dogecoin','ripple','cardano','binancecoin','polkadot','litecoin','chainlink'];
   try{
-    const d = await resilientFetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coins.join(',')}&order=market_cap_desc&price_change_percentage=24h`);
+    const res = await resilientFetch('/api/crypto');
+    const d = res.coins || [];
     const byId = {}; d.forEach(c => byId[c.id] = c);
     DATA.markets = byId;
 
@@ -849,11 +854,10 @@ async function loadMarkets(){
     }
     stampUpdated('finUpdated');
   }catch(e){
-    // CoinGecko's free tier rate-limits fairly aggressively (~10-30 req/min
-    // per IP) — a 429 here almost always means that cap was hit from testing/
-    // refreshing a lot, not a real outage. Showing the real reason instead of
-    // a generic message saves a lot of guessing.
-    const reason = e.message.includes('429') ? 'RATE LIMITED (CoinGecko free tier) — try again in a minute' : `SIGNAL LOST (${e.message})`;
+    // Now proxied through /api/crypto with server-side caching, so a 429
+    // here would mean the shared server-side cap was hit — rare, but shown
+    // honestly if it happens.
+    const reason = e.message.includes('429') ? 'RATE LIMITED (server-side cap) — try again shortly' : `SIGNAL LOST (${e.message})`;
     document.getElementById('marketList').innerHTML = `<div class="loading">${reason}</div>`;
     document.getElementById('cryptoFinList').innerHTML = `<div class="loading">${reason}</div>`;
   }
@@ -874,7 +878,7 @@ const CURRENCY_PAIRS = [
 ];
 async function loadCurrencyAndMetals(){
   try{
-    const d = await resilientFetch('https://api.exchangerate.fun/latest?base=USD');
+    const d = await resilientFetch('/api/currency');
     DATA.currency = d.rates;
 
     document.getElementById('currencyList').innerHTML = CURRENCY_PAIRS.map(code => {
@@ -888,13 +892,10 @@ async function loadCurrencyAndMetals(){
     document.getElementById('goldPrice').textContent = goldPerOz ? `$${goldPerOz.toFixed(0)}` : '—';
     document.getElementById('silverPrice').textContent = silverPerOz ? `$${silverPerOz.toFixed(2)}` : '—';
   }catch(e){
-    // "Failed to fetch" here has two very different possible causes that look
-    // identical to JS: a genuine network blip, OR the request being silently
-    // blocked by the page's Content-Security-Policy (if exchangerate.fun ever
-    // fell out of the connect-src allowlist in vercel.json). The browser
-    // doesn't expose which one happened to JS — check DevTools → Console for
-    // a line starting "Refused to connect" to tell them apart.
-    document.getElementById('currencyList').innerHTML = `<div class="loading">SIGNAL LOST (${e.message}) — check browser console for CSP block vs network issue</div>`;
+    // Now proxied through /api/currency with server-side caching — a timeout
+    // here would mean our OWN backend is unreachable, not exchangerate.fun
+    // directly, so this should be rare going forward.
+    document.getElementById('currencyList').innerHTML = `<div class="loading">SIGNAL LOST (${e.message})</div>`;
   }
 }
 
@@ -1013,7 +1014,7 @@ async function loadWeatherDetail(index){
   try{
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${s.lat}&longitude=${s.lng}` +
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code` +
-      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset` +
       `&forecast_days=4&timezone=auto`;
     const res = await fetch(url);
     const d = await res.json();
@@ -1049,8 +1050,23 @@ async function loadWeatherDetail(index){
     }).join('');
 
     grid.innerHTML = nowHtml + days;
+
+    // Sunlight panel (left column) — same request, no extra API call needed.
+    document.getElementById('sunlightCity').textContent = s.name;
+    const sunrise = new Date(d.daily.sunrise[0]);
+    const sunset = new Date(d.daily.sunset[0]);
+    const daylightMs = sunset - sunrise;
+    const hrs = Math.floor(daylightMs / 3600000);
+    const mins = Math.round((daylightMs % 3600000) / 60000);
+    const fmtT = dt => dt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('sunlightData').innerHTML = `
+      <div class="row"><span class="tag">☀ Sunrise</span><span class="val">${fmtT(sunrise)}</span></div>
+      <div class="row"><span class="tag">🌇 Sunset</span><span class="val">${fmtT(sunset)}</span></div>
+      <div class="row"><span class="tag">Daylight</span><span class="val">${hrs}h ${mins}m</span></div>
+    `;
   }catch(e){
     grid.innerHTML = '<div class="wx-now"><span class="loading">SIGNAL LOST — RETRYING…</span></div>';
+    document.getElementById('sunlightData').innerHTML = '<div class="loading">SIGNAL LOST</div>';
   }
 }
 
