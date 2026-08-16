@@ -3,9 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <title>OBSERVATORY — Live Earth Feed</title>
+<meta name="description" content="Observatory — a live mission-control dashboard tracking earthquakes, the ISS, weather, world clocks, markets, and global news in real time.">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Non-blocking font load: browser can start rendering immediately instead
+     of waiting on this stylesheet; falls back to a normal <link> if JS is off. -->
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
 <script src="https://unpkg.com/globe.gl"></script>
 <style>
   :root{
@@ -218,7 +223,7 @@
     background:var(--panel); border:1px solid var(--panel-edge); color:var(--text);
     font-family:var(--mono); font-size:12px; padding:7px 10px;
   }
-  .wx-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px;}
+  .wx-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px; min-height:180px;}
   .wx-now{
     grid-column:1 / -1; display:flex; gap:24px; flex-wrap:wrap; align-items:center;
     padding:16px; border:1px solid var(--panel-edge); background:var(--panel);
@@ -255,7 +260,7 @@
   .news-item .meta b{color:var(--amber);}
 
   /* World almanac */
-  .country-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:10px;}
+  .country-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:10px; min-height:600px;}
   .country-card{
     border:1px solid var(--panel-edge); background:var(--panel); padding:10px; display:flex; gap:10px; align-items:center;
   }
@@ -288,14 +293,14 @@
   .updated-stamp{font-family:var(--mono); font-size:9px; color:var(--text-muted); letter-spacing:0.08em; margin-top:8px; text-align:right;}
 
   /* ---------- WORLD CLOCKS ---------- */
-  .clock-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px;}
+  .clock-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px; min-height:180px;}
   .clock-card{border:1px solid var(--panel-edge); background:var(--panel); padding:10px 12px; text-align:center;}
   .clock-card .czone{font-family:var(--mono); font-size:9px; letter-spacing:0.14em; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px;}
   .clock-card .ctime{font-family:var(--mono); font-size:18px; color:var(--phosphor); font-weight:600;}
   .clock-card .cplace{font-family:var(--sans); font-size:10px; color:var(--text-muted); margin-top:3px;}
 
   /* ---------- FINANCIAL DASHBOARD ---------- */
-  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; align-items:start;}
+  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; align-items:start; grid-auto-flow:dense;}
   .fin-panel-wide{grid-column: span 2;}
   @media(max-width:700px){ .fin-panel-wide{grid-column: span 1;} }
   .fin-cols-2{display:grid; grid-template-columns:1fr 1fr; gap:0 18px;}
@@ -305,7 +310,7 @@
   .atmos-tight .row{padding:5px 0;}
 
   /* ---------- FESTIVALS ---------- */
-  .festival-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:10px;}
+  .festival-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:10px; min-height:200px;}
   .festival-card{
     border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px;
     display:flex; align-items:center; gap:12px;
@@ -317,7 +322,7 @@
   .festival-card .fdate{font-family:var(--mono); font-size:10px; color:var(--text-muted); margin-top:2px;}
   .festival-card .fcount{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--phosphor); text-align:right; white-space:nowrap;}
   .festival-card.today .fcount{color:var(--amber); font-weight:700;}
-  .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px;}
+  .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px; min-height:120px;}
   .fin-panel h3{margin:0 0 8px; font-family:var(--mono); font-size:10.5px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:500;}
   .fin-row{display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--grid); font-family:var(--mono); font-size:12px;}
   .fin-row:last-child{border-bottom:none;}
@@ -366,6 +371,7 @@
   <div class="conn-status" id="connStatus"><span class="dot"></span><span id="connLabel">Online</span></div>
 </header>
 
+<main>
 <div class="grid">
 
   <!-- LEFT COLUMN -->
@@ -483,6 +489,8 @@
     <span>SYSTEM INITIALIZING…</span>
   </div>
 </div>
+
+</main>
 
 <footer></footer>
 
@@ -609,7 +617,7 @@ function updateConnStatus(){
   // decay so a bad patch doesn't permanently color the indicator
   if(total > 20){ connHealth.ok = Math.round(connHealth.ok/2); connHealth.fail = Math.round(connHealth.fail/2); }
 }
-async function resilientFetch(url, opts = {}, timeoutMs = 8000, retries = 1){
+async function resilientFetch(url, opts = {}, timeoutMs = 10000, retries = 2){
   for(let attempt = 0; attempt <= retries; attempt++){
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -880,7 +888,13 @@ async function loadCurrencyAndMetals(){
     document.getElementById('goldPrice').textContent = goldPerOz ? `$${goldPerOz.toFixed(0)}` : '—';
     document.getElementById('silverPrice').textContent = silverPerOz ? `$${silverPerOz.toFixed(2)}` : '—';
   }catch(e){
-    document.getElementById('currencyList').innerHTML = '<div class="loading">SIGNAL LOST — RETRYING…</div>';
+    // "Failed to fetch" here has two very different possible causes that look
+    // identical to JS: a genuine network blip, OR the request being silently
+    // blocked by the page's Content-Security-Policy (if exchangerate.fun ever
+    // fell out of the connect-src allowlist in vercel.json). The browser
+    // doesn't expose which one happened to JS — check DevTools → Console for
+    // a line starting "Refused to connect" to tell them apart.
+    document.getElementById('currencyList').innerHTML = `<div class="loading">SIGNAL LOST (${e.message}) — check browser console for CSP block vs network issue</div>`;
   }
 }
 
@@ -918,13 +932,14 @@ async function loadFinance(){
 /* ================= MARKET NEWS MINI (reuses the news wire, business category) ================= */
 async function loadFinNews(){
   try{
-    const d = await resilientFetch('https://noozra.com/api/articles?category=business&limit=5');
+    const d = await resilientFetch('/api/news?category=business&limit=5');
     document.getElementById('finNewsList').innerHTML = d.articles.slice(0,5).map(a =>
       `<div class="fin-row"><a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--text);text-decoration:none;font-size:11px;">${escapeHtml(a.headline)}</a></div>`
     ).join('');
     applySearchFilter();
   }catch(e){
-    document.getElementById('finNewsList').innerHTML = '<div class="loading">SIGNAL LOST — RETRYING…</div>';
+    const reason = e.message.includes('429') ? 'RATE LIMIT HIT (server-side cap) — try again shortly' : `SIGNAL LOST (${e.message})`;
+    document.getElementById('finNewsList').innerHTML = `<div class="loading">${reason}</div>`;
   }
 }
 
@@ -1069,7 +1084,7 @@ async function loadNews(cat){
   currentNewsCat = cat || currentNewsCat;
   const list = document.getElementById('newsList');
   try{
-    const res = await fetch(`https://noozra.com/api/articles?category=${encodeURIComponent(currentNewsCat)}&limit=12`);
+    const res = await fetch(`/api/news?category=${encodeURIComponent(currentNewsCat)}&limit=12`);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
     if(!Array.isArray(d.articles)) throw new Error('unexpected response shape');
@@ -1083,10 +1098,10 @@ async function loadNews(cat){
     document.getElementById('newsUpdated').textContent = `updated ${new Date().toLocaleTimeString()}`;
     applySearchFilter();
   }catch(e){
-    // Show the real reason instead of a generic message — a 429 here almost
-    // always means Noozra's free 100/day-per-IP cap was hit (easy to do
-    // while actively testing/refreshing a lot), not that anything is broken.
-    const reason = e.message.includes('429') ? 'RATE LIMIT HIT (100/day free cap) — try again later' : `SIGNAL LOST (${e.message}) — RETRYING…`;
+    // Now proxied through /api/news (server IP + server-side cache), so a
+    // 429 here would mean the shared server-side quota is hit — much less
+    // likely than before, but still shown honestly if it happens.
+    const reason = e.message.includes('429') ? 'RATE LIMIT HIT (server-side cap) — try again shortly' : `SIGNAL LOST (${e.message}) — RETRYING…`;
     list.innerHTML = `<div class="loading">${reason}</div>`;
   }
 }
@@ -1349,14 +1364,37 @@ document.getElementById('chatClose').addEventListener('click', () => {
 addMsg("Operator online. Ask me about the ISS, quakes, markets, weather — or anything else, I'll bring in real AI for the rest.", 'bot');
 
 /* ================= BOOT ================= */
+// Deliberately staggered rather than fired all at once: the globe's WebGL
+// setup is already the heaviest single thing on this page, so rendering
+// ~200 more DOM elements (100 countries, 30 currencies, 30 clocks, etc.) in
+// the very same instant piles a long synchronous task on top of it — that's
+// the main driver of high "blocking time" in performance audits. Splitting
+// this into a couple of small idle-time chunks lets the browser breathe
+// between them without changing what loads or how fast data itself arrives.
+// NOTE: this only reorders when things RENDER, not the <script> loading
+// order for globe.gl itself — that stays untouched on purpose, since
+// reordering script loading is what caused the earlier "Globe is not
+// defined" crash. Never touch that again without very good reason.
+const onIdle = window.requestIdleCallback || (fn => setTimeout(fn, 1));
+
+// Chunk 1 — fires immediately: fast, small, already-critical panels.
 loadQuakes(); loadISS(); loadMarkets(); loadAtmos();
 populateWxSelect(); loadWeatherDetail(0);
-loadNews('general');
-renderCountries();
-loadCurrencyAndMetals();
-loadFinance();
-loadFinNews();
-loadFestivals();
+
+// Chunk 2 — deferred one idle slot: renders ~100+ DOM elements at once.
+onIdle(() => {
+  renderCountries();
+  loadCurrencyAndMetals();
+});
+
+// Chunk 3 — deferred a further idle slot: network-bound, less urgent.
+onIdle(() => {
+  loadNews('general');
+  loadFinance();
+  loadFinNews();
+  loadFestivals();
+});
+
 setInterval(loadQuakes, 5 * 60 * 1000);        // every 5 min
 setInterval(loadISS, 5 * 1000);                // every 5 sec (fast mover)
 setInterval(loadMarkets, 60 * 1000);           // every 60 sec
