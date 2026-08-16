@@ -44,6 +44,12 @@ module.exports = async (req, res) => {
   if (!message || typeof message !== 'string' || message.length > 500) {
     return res.status(400).json({ error: 'Send a "message" string under 500 characters.' });
   }
+  // Basic input sanitization: strip control characters and null bytes before
+  // this ever reaches the model or gets logged anywhere.
+  const cleanMessage = message.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+  if (!cleanMessage) {
+    return res.status(400).json({ error: 'Message was empty after cleanup.' });
+  }
 
   try {
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -59,13 +65,24 @@ module.exports = async (req, res) => {
             role: 'system',
             content:
               'You are OPERATOR, the AI assistant embedded in a live mission-control dashboard called Observatory. ' +
-              'Answer briefly — 2 to 4 sentences, calm and precise, no fluff. ' +
-              (context ? `Live dashboard data you can reference if relevant: ${JSON.stringify(context).slice(0, 2000)}` : ''),
+              'Answer briefly — 2 to 4 sentences, calm and precise, no fluff.\n\n' +
+              'GROUNDING RULE — this is the most important instruction you have: ' +
+              'Only state a metric, price, stock value, quake magnitude, or news item if it appears in the ' +
+              '"Live dashboard data" block below. If the data needed to answer isn\'t present there, say so ' +
+              'explicitly — e.g. "I don\'t have that in the current live feed." Never invent, estimate, or guess ' +
+              'a number you were not given. Do not average, extrapolate, or "fill in" a plausible-sounding figure ' +
+              'for a stock, index, price, or statistic that isn\'t in the data block — an honest "not available" ' +
+              'is always correct; a fabricated number never is.\n\n' +
+              (context ? `Live dashboard data (only source of truth for numbers): ${JSON.stringify(context).slice(0, 2000)}` : 'No live dashboard data was passed for this question — decline to state any specific numbers.'),
           },
-          { role: 'user', content: message },
+          { role: 'user', content: cleanMessage },
         ],
         max_tokens: 300,
-        temperature: 0.6,
+        // Low temperature on purpose: this bot reports live data, so we want
+        // the most literal/predictable output, not creative variation. High
+        // temperature is what causes confident-sounding invented numbers —
+        // exactly what the grounding rule above is trying to prevent.
+        temperature: 0.2,
       }),
     });
 
