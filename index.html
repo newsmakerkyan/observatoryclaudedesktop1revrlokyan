@@ -224,6 +224,8 @@
     font-family:var(--mono); font-size:12px; padding:7px 10px;
   }
   .wx-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px; min-height:180px;}
+  .wx-secondary{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;}
+  @media(max-width:700px){ .wx-secondary{grid-template-columns:1fr;} }
   .wx-now{
     grid-column:1 / -1; display:flex; gap:24px; flex-wrap:wrap; align-items:center;
     padding:16px; border:1px solid var(--panel-edge); background:var(--panel);
@@ -385,11 +387,6 @@
       <div class="panel-head">Markets <span class="n">USD</span></div>
       <div class="panel-body" id="marketList"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
-
-    <div class="panel">
-      <div class="panel-head">Sunlight <span class="n" id="sunlightCity">--</span></div>
-      <div class="panel-body" id="sunlightData"><div class="loading">ACQUIRING SIGNAL…</div></div>
-    </div>
   </div>
 
   <!-- CENTER: GLOBE -->
@@ -407,11 +404,6 @@
       <div class="panel-head">ISS Orbit Data <span class="n">LIVE</span></div>
       <div class="panel-body" id="issData"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
-
-    <div class="panel">
-      <div class="panel-head">Atmospheric Stations <span class="n" id="stationCount">--</span></div>
-      <div class="panel-body atmos-tight" id="atmosList"><div class="loading">ACQUIRING SIGNAL…</div></div>
-    </div>
   </div>
 
 </div>
@@ -424,12 +416,22 @@
 
 <!-- WEATHER ANALYSIS -->
 <div class="wide" id="sec-weather">
-  <div class="section-head">Weather Analysis <span class="sub">4-day forecast · humidity · wind · UV</span></div>
+  <div class="section-head">Weather Analysis <span class="sub">forecast &amp; sunlight follow the city picker · station list shows all 30</span></div>
   <div class="wx-controls">
     <select id="wxCity"></select>
   </div>
   <div class="wx-grid" id="wxGrid">
     <div class="wx-now"><span class="loading">ACQUIRING SIGNAL…</span></div>
+  </div>
+  <div class="wx-secondary">
+    <div class="fin-panel">
+      <h3>Sunlight <span id="sunlightCity" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
+      <div id="sunlightData"><div class="loading">ACQUIRING SIGNAL…</div></div>
+    </div>
+    <div class="fin-panel">
+      <h3>All Stations <span id="stationCount" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
+      <div id="atmosList" class="atmos-tight"><div class="loading">ACQUIRING SIGNAL…</div></div>
+    </div>
   </div>
 </div>
 
