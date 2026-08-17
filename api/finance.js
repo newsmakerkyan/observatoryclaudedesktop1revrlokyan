@@ -22,7 +22,7 @@ function simulatedPayload(){
 
 async function fetchQuote(symbol, key){
   const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`;
-  const r = await fetch(url);
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
   if(!r.ok) return null;
   const d = await r.json();
   if(!d || typeof d.c !== 'number' || d.c === 0) return null;
