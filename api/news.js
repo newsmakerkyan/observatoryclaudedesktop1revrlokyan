@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
   }
 
   try{
-    const r = await fetch(`https://noozra.com/api/articles?category=${encodeURIComponent(category)}&limit=${limit}`);
+    const r = await fetch(`https://noozra.com/api/articles?category=${encodeURIComponent(category)}&limit=${limit}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     cache[category] = { data: d, ts: Date.now() };
