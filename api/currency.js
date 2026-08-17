@@ -17,7 +17,17 @@ module.exports = async (req, res) => {
   }
 
   try{
-    const r = await fetch('https://api.exchangerate.fun/latest?base=USD');
+    // Vercel's serverless fetch sends a minimal Node.js User-Agent by default,
+    // and some APIs (including this one, apparently) reject requests that
+    // don't look like they're coming from a real client — a plain
+    // server-to-server 403, unrelated to rate limits or the API being down.
+    // A normal browser-like header fixes it.
+    const r = await fetch('https://api.exchangerate.fun/latest?base=USD', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+      },
+    });
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     cache = { data: d, ts: Date.now() };
