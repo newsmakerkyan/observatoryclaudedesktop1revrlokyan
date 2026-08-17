@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
 
   try{
     const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${COINS.join(',')}&order=market_cap_desc&price_change_percentage=24h`;
-    const r = await fetch(url);
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     const payload = { coins: d };
