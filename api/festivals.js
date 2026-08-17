@@ -30,8 +30,8 @@ module.exports = async (req, res) => {
     // Pull both this year and next year so the list never runs dry in December.
     const requests = [];
     COUNTRIES.forEach(cc => {
-      requests.push(fetch(`https://date.nager.at/api/v3/publicholidays/${year}/${cc}`).then(r => r.ok ? r.json() : []).catch(() => []));
-      requests.push(fetch(`https://date.nager.at/api/v3/publicholidays/${year + 1}/${cc}`).then(r => r.ok ? r.json() : []).catch(() => []));
+      requests.push(fetch(`https://date.nager.at/api/v3/publicholidays/${year}/${cc}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } }).then(r => r.ok ? r.json() : []).catch(() => []));
+      requests.push(fetch(`https://date.nager.at/api/v3/publicholidays/${year + 1}/${cc}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } }).then(r => r.ok ? r.json() : []).catch(() => []));
     });
     const results = await Promise.all(requests);
     const all = results.flat().filter(Boolean);
