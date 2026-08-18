@@ -404,6 +404,11 @@
       <div class="panel-head">ISS Orbit Data <span class="n">LIVE</span></div>
       <div class="panel-body" id="issData"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
+
+    <div class="panel">
+      <div class="panel-head">Moon Phase <span class="n">TODAY</span></div>
+      <div class="panel-body" id="moonPhaseData"><div class="loading">ACQUIRING SIGNAL…</div></div>
+    </div>
   </div>
 
 </div>
@@ -416,7 +421,7 @@
 
 <!-- WEATHER ANALYSIS -->
 <div class="wide" id="sec-weather">
-  <div class="section-head">Weather Analysis <span class="sub">forecast &amp; sunlight follow the city picker · station list shows all 30</span></div>
+  <div class="section-head">Weather Analysis <span class="sub">forecast, sunlight &amp; station detail all follow the city picker</span></div>
   <div class="wx-controls">
     <select id="wxCity"></select>
   </div>
@@ -426,10 +431,10 @@
   <div class="wx-secondary">
     <div class="fin-panel">
       <h3>Sunlight <span id="sunlightCity" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
-      <div id="sunlightData"><div class="loading">ACQUIRING SIGNAL…</div></div>
+      <div id="sunlightData" class="atmos-tight"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
     <div class="fin-panel">
-      <h3>All Stations <span id="stationCount" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
+      <h3>Station Detail <span id="stationCity" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
       <div id="atmosList" class="atmos-tight"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
   </div>
@@ -980,26 +985,23 @@ const STATIONS = [
   { name:'Auckland',      lat:-36.85, lng:174.76 },
 ];
 async function loadAtmos(){
+  // NOTE: this no longer renders into the visible panel — "Station Detail"
+  // is now single-city, driven by the weather picker (see loadWeatherDetail).
+  // This still runs quietly in the background because DATA.atmos feeds the
+  // ticker's "warmest station" line and lets the chatbot answer weather
+  // questions about cities other than whichever one is currently selected.
   try{
     const results = await Promise.all(STATIONS.map(async s => {
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${s.lat}&longitude=${s.lng}&current=temperature_2m,wind_speed_10m`);
       const d = await res.json();
       return { ...s, temp: d.current.temperature_2m, wind: d.current.wind_speed_10m };
     }));
-    document.getElementById('stationCount').textContent = results.length;
-    document.getElementById('atmosList').innerHTML = results.map(r => `
-      <div class="row">
-        <span class="tag">${r.name}</span>
-        <span class="val">${r.temp.toFixed(0)}°C <span style="color:var(--text-muted)">· ${r.wind.toFixed(0)} km/h wind</span></span>
-      </div>
-    `).join('');
     DATA.atmos = results;
-    applySearchFilter();
     const hottest = results.reduce((a,b) => b.temp > a.temp ? b : a);
     tickerItems[3] = `WARMEST STATION: <b>${hottest.name} ${hottest.temp.toFixed(0)}°C</b>`;
     updateTicker();
   }catch(e){
-    document.getElementById('atmosList').innerHTML = '<div class="loading">SIGNAL LOST — RETRYING…</div>';
+    // Silent — this is background data, not a visible panel, so no error UI needed.
   }
 }
 
@@ -1053,23 +1055,62 @@ async function loadWeatherDetail(index){
 
     grid.innerHTML = nowHtml + days;
 
-    // Sunlight panel (left column) — same request, no extra API call needed.
-    document.getElementById('sunlightCity').textContent = s.name;
+    // Sunlight + Station Detail — both single-city, tied to this same picker,
+    // both reuse data already fetched above (no extra API calls).
     const sunrise = new Date(d.daily.sunrise[0]);
     const sunset = new Date(d.daily.sunset[0]);
     const daylightMs = sunset - sunrise;
     const hrs = Math.floor(daylightMs / 3600000);
     const mins = Math.round((daylightMs % 3600000) / 60000);
     const fmtT = dt => dt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('sunlightCity').textContent = s.name;
     document.getElementById('sunlightData').innerHTML = `
       <div class="row"><span class="tag">☀ Sunrise</span><span class="val">${fmtT(sunrise)}</span></div>
       <div class="row"><span class="tag">🌇 Sunset</span><span class="val">${fmtT(sunset)}</span></div>
       <div class="row"><span class="tag">Daylight</span><span class="val">${hrs}h ${mins}m</span></div>
     `;
+
+    document.getElementById('stationCity').textContent = s.name;
+    document.getElementById('atmosList').innerHTML = `
+      <div class="row"><span class="tag">Temperature</span><span class="val">${c.temperature_2m.toFixed(0)}°C</span></div>
+      <div class="row"><span class="tag">Humidity</span><span class="val">${c.relative_humidity_2m}%</span></div>
+      <div class="row"><span class="tag">Wind</span><span class="val">${c.wind_speed_10m.toFixed(0)} km/h</span></div>
+    `;
   }catch(e){
     grid.innerHTML = '<div class="wx-now"><span class="loading">SIGNAL LOST — RETRYING…</span></div>';
     document.getElementById('sunlightData').innerHTML = '<div class="loading">SIGNAL LOST</div>';
+    document.getElementById('atmosList').innerHTML = '<div class="loading">SIGNAL LOST</div>';
   }
+}
+
+/* ================= MOON PHASE (pure date math — zero API calls) ================= */
+function getMoonPhase(date = new Date()){
+  const synodicMonth = 29.530588853;
+  const knownNewMoon = Date.UTC(2000, 0, 6, 18, 14);
+  const daysSince = (date.getTime() - knownNewMoon) / 86400000;
+  const phase = ((daysSince % synodicMonth) + synodicMonth) % synodicMonth;
+  const illumination = ((1 - Math.cos(2 * Math.PI * phase / synodicMonth)) / 2) * 100;
+  const phases = [
+    { max: 1.84566,  name: 'New Moon',        icon: '🌑' },
+    { max: 5.53699,  name: 'Waxing Crescent', icon: '🌒' },
+    { max: 9.22831,  name: 'First Quarter',   icon: '🌓' },
+    { max: 12.91963, name: 'Waxing Gibbous',  icon: '🌔' },
+    { max: 16.61096, name: 'Full Moon',       icon: '🌕' },
+    { max: 20.30228, name: 'Waning Gibbous',  icon: '🌖' },
+    { max: 23.99361, name: 'Last Quarter',    icon: '🌗' },
+    { max: 27.68493, name: 'Waning Crescent', icon: '🌘' },
+    { max: 29.53059, name: 'New Moon',        icon: '🌑' },
+  ];
+  const p = phases.find(p => phase < p.max) || phases[phases.length - 1];
+  const daysUntilFull = phase <= 14.76529 ? (14.76529 - phase) : (14.76529 + synodicMonth - phase);
+  return { name: p.name, icon: p.icon, illumination: illumination.toFixed(0), daysUntilFull: daysUntilFull.toFixed(1) };
+}
+function renderMoonPhase(){
+  const m = getMoonPhase();
+  document.getElementById('moonPhaseData').innerHTML = `
+    <div class="row"><span class="tag">${m.icon} ${m.name}</span><span class="val">${m.illumination}% lit</span></div>
+    <div class="row"><span class="tag">Next full moon</span><span class="val">${m.daysUntilFull}d</span></div>
+  `;
 }
 
 /* ================= NEWS WIRE (Noozra — no key, 100 req/day/IP) ================= */
@@ -1398,6 +1439,7 @@ const onIdle = window.requestIdleCallback || (fn => setTimeout(fn, 1));
 // Chunk 1 — fires immediately: fast, small, already-critical panels.
 loadQuakes(); loadISS(); loadMarkets(); loadAtmos();
 populateWxSelect(); loadWeatherDetail(0);
+renderMoonPhase();
 
 // Chunk 2 — deferred one idle slot: renders ~100+ DOM elements at once.
 onIdle(() => {
@@ -1416,7 +1458,8 @@ onIdle(() => {
 setInterval(loadQuakes, 5 * 60 * 1000);        // every 5 min
 setInterval(loadISS, 5 * 1000);                // every 5 sec (fast mover)
 setInterval(loadMarkets, 60 * 1000);           // every 60 sec
-setInterval(loadAtmos, 10 * 60 * 1000);        // every 10 min
+setInterval(loadAtmos, 10 * 60 * 1000);        // every 10 min — background only, feeds ticker + chatbot
+setInterval(renderMoonPhase, 60 * 60 * 1000);  // every hour — barely changes, no API call anyway
 setInterval(() => loadWeatherDetail(+document.getElementById('wxCity').value), 10 * 60 * 1000); // every 10 min
 setInterval(() => loadNews(currentNewsCat), 4 * 60 * 1000);   // every 4 min — stays well under Noozra's 100/day cap
 setInterval(loadCurrencyAndMetals, 10 * 60 * 1000);           // every 10 min — no key, generous limits
