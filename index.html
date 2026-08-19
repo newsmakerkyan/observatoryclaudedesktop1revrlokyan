@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <title>OBSERVATORY — Live Earth Feed</title>
 <meta name="description" content="Observatory — a live mission-control dashboard tracking earthquakes, the ISS, weather, world clocks, markets, and global news in real time.">
+<!-- Logo/favicon: a radar-sweep circle, drawn as inline SVG so no image file
+     or upload is needed — scales perfectly and matches the theme exactly. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23050907'/%3E%3Ccircle cx='50' cy='50' r='38' fill='none' stroke='%2339ff88' stroke-width='4'/%3E%3Ccircle cx='50' cy='50' r='22' fill='none' stroke='%2339ff88' stroke-width='3' opacity='0.6'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%2339ff88'/%3E%3Cline x1='50' y1='50' x2='82' y2='28' stroke='%2339ff88' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,6 +52,7 @@
   }
   .brand{display:flex; align-items:center; gap:10px;}
   .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--phosphor);box-shadow:0 0 8px var(--phosphor);animation:pulse 2s infinite;}
+  .logo-mark{color:var(--phosphor); filter:drop-shadow(0 0 4px var(--phosphor)); flex-shrink:0; animation:pulse 3s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
   .brand h1{font-family:var(--mono);font-size:15px;letter-spacing:0.28em;margin:0;font-weight:700;color:var(--text);text-transform:uppercase;}
   .brand small{display:block;font-family:var(--mono);font-size:10px;color:var(--text-muted);letter-spacing:0.15em;margin-top:2px;}
@@ -330,6 +334,8 @@
   .fin-row:last-child{border-bottom:none;}
   .fin-row .sym{color:var(--text-muted);}
   .fin-row .px{color:var(--text); font-weight:600; margin-right:8px;}
+  .fin-row .px.up{color:var(--phosphor);}
+  .fin-row .px.down{color:var(--red);}
   .fin-metals{display:flex; gap:20px;}
   .fin-metals .m{text-align:center; flex:1;}
   .fin-metals .m .lbl{font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:0.1em;}
@@ -348,7 +354,12 @@
 
 <header>
   <div class="brand">
-    <span class="dot"></span>
+    <svg class="logo-mark" viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="50" cy="50" r="22" fill="none" stroke="currentColor" stroke-width="3" opacity="0.6"/>
+      <circle cx="50" cy="50" r="6" fill="currentColor"/>
+      <line x1="50" y1="50" x2="82" y2="28" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    </svg>
     <div>
       <h1>Observatory</h1>
       <small>Live planetary feed // unclassified</small>
@@ -451,8 +462,9 @@
     <div class="fin-panel">
       <h3>Metals</h3>
       <div class="fin-metals" id="metalsList">
-        <div class="m"><div class="lbl">GOLD / OZ</div><div class="val" id="goldPrice">--</div></div>
-        <div class="m"><div class="lbl">SILVER / OZ</div><div class="val" id="silverPrice">--</div></div>
+        <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
+        <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
+        <div class="m"><div class="lbl">COPPER / KG</div><div class="val" id="copperPrice">--</div></div>
       </div>
     </div>
     <div class="fin-panel fin-panel-wide">
@@ -894,10 +906,16 @@ async function loadCurrencyAndMetals(){
     }).join('');
 
     // XAU/XAG are troy-ounce rates against USD (i.e. 1 USD = X ounces) — invert for $/oz
-    const goldPerOz = d.rates.XAU ? (1 / d.rates.XAU) : null;
-    const silverPerOz = d.rates.XAG ? (1 / d.rates.XAG) : null;
-    document.getElementById('goldPrice').textContent = goldPerOz ? `$${goldPerOz.toFixed(0)}` : '—';
-    document.getElementById('silverPrice').textContent = silverPerOz ? `$${silverPerOz.toFixed(2)}` : '—';
+    // XAU/XAG/XCU are troy-ounce rates against USD (i.e. 1 USD = X ounces).
+    // Invert for $/oz, then multiply by troy-ounces-per-kg (32.1507466) to
+    // get $/kg instead — same live data, just a more intuitive unit.
+    const OZ_PER_KG = 32.1507466;
+    const goldPerKg = d.rates.XAU ? (1 / d.rates.XAU) * OZ_PER_KG : null;
+    const silverPerKg = d.rates.XAG ? (1 / d.rates.XAG) * OZ_PER_KG : null;
+    const copperPerKg = d.rates.XCU ? (1 / d.rates.XCU) * OZ_PER_KG : null;
+    document.getElementById('goldPrice').textContent = goldPerKg ? `$${goldPerKg.toLocaleString(undefined,{maximumFractionDigits:0})}` : '—';
+    document.getElementById('silverPrice').textContent = silverPerKg ? `$${silverPerKg.toLocaleString(undefined,{maximumFractionDigits:0})}` : '—';
+    document.getElementById('copperPrice').textContent = copperPerKg ? `$${copperPerKg.toFixed(2)}` : '—';
   }catch(e){
     // Now proxied through /api/currency with server-side caching — a timeout
     // here would mean our OWN backend is unreachable, not exchangerate.fun
@@ -1091,15 +1109,15 @@ function getMoonPhase(date = new Date()){
   const phase = ((daysSince % synodicMonth) + synodicMonth) % synodicMonth;
   const illumination = ((1 - Math.cos(2 * Math.PI * phase / synodicMonth)) / 2) * 100;
   const phases = [
-    { max: 1.84566,  name: 'New Moon',        icon: '🌑' },
-    { max: 5.53699,  name: 'Waxing Crescent', icon: '🌒' },
-    { max: 9.22831,  name: 'First Quarter',   icon: '🌓' },
-    { max: 12.91963, name: 'Waxing Gibbous',  icon: '🌔' },
-    { max: 16.61096, name: 'Full Moon',       icon: '🌕' },
-    { max: 20.30228, name: 'Waning Gibbous',  icon: '🌖' },
-    { max: 23.99361, name: 'Last Quarter',    icon: '🌗' },
-    { max: 27.68493, name: 'Waning Crescent', icon: '🌘' },
-    { max: 29.53059, name: 'New Moon',        icon: '🌑' },
+    { max: 1.84566,  name: 'New Moon (No Moon)',       icon: '🌑' },
+    { max: 5.53699,  name: 'Waxing Crescent',          icon: '🌒' },
+    { max: 9.22831,  name: 'First Quarter (Half Moon)', icon: '🌓' },
+    { max: 12.91963, name: 'Waxing Gibbous',           icon: '🌔' },
+    { max: 16.61096, name: 'Full Moon',                icon: '🌕' },
+    { max: 20.30228, name: 'Waning Gibbous',           icon: '🌖' },
+    { max: 23.99361, name: 'Last Quarter (Half Moon)',  icon: '🌗' },
+    { max: 27.68493, name: 'Waning Crescent',          icon: '🌘' },
+    { max: 29.53059, name: 'New Moon (No Moon)',       icon: '🌑' },
   ];
   const p = phases.find(p => phase < p.max) || phases[phases.length - 1];
   const daysUntilFull = phase <= 14.76529 ? (14.76529 - phase) : (14.76529 + synodicMonth - phase);
@@ -1301,12 +1319,16 @@ function respond(raw){
   }
 
   if(q.includes('gold')){
-    const g = DATA.currency?.XAU ? (1/DATA.currency.XAU).toFixed(0) : null;
-    return g ? `Gold is $${g}/oz right now.` : "Metals data not yet acquired — ask again shortly.";
+    const g = DATA.currency?.XAU ? ((1/DATA.currency.XAU) * 32.1507466).toFixed(0) : null;
+    return g ? `Gold is $${Number(g).toLocaleString()}/kg right now.` : "Metals data not yet acquired — ask again shortly.";
   }
   if(q.includes('silver')){
-    const s = DATA.currency?.XAG ? (1/DATA.currency.XAG).toFixed(2) : null;
-    return s ? `Silver is $${s}/oz right now.` : "Metals data not yet acquired — ask again shortly.";
+    const s = DATA.currency?.XAG ? ((1/DATA.currency.XAG) * 32.1507466).toFixed(0) : null;
+    return s ? `Silver is $${Number(s).toLocaleString()}/kg right now.` : "Metals data not yet acquired — ask again shortly.";
+  }
+  if(q.includes('copper')){
+    const c = DATA.currency?.XCU ? ((1/DATA.currency.XCU) * 32.1507466).toFixed(2) : null;
+    return c ? `Copper is $${c}/kg right now.` : "Copper data not available — check if XCU is in the source data.";
   }
   const CUR_NAMES = { eur:'EUR', euro:'EUR', gbp:'GBP', pound:'GBP', inr:'INR', rupee:'INR', jpy:'JPY', yen:'JPY', cny:'CNY', yuan:'CNY', aed:'AED', dirham:'AED' };
   const curHit = Object.keys(CUR_NAMES).find(k => q.includes(k));
