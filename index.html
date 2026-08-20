@@ -306,7 +306,7 @@
   .clock-card .cplace{font-family:var(--sans); font-size:10px; color:var(--text-muted); margin-top:3px;}
 
   /* ---------- FINANCIAL DASHBOARD ---------- */
-  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; align-items:start;}
+  .fin-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 280px)); gap:14px; align-items:start; justify-content:start;}
   .atmos-tight .row{padding:5px 0;}
 
   /* ---------- FESTIVALS ---------- */
@@ -458,7 +458,6 @@
       <div class="fin-metals" id="metalsList">
         <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
         <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
-        <div class="m"><div class="lbl">COPPER / KG</div><div class="val" id="copperPrice">--</div></div>
       </div>
     </div>
     <div class="fin-panel">
@@ -899,17 +898,14 @@ async function loadCurrencyAndMetals(){
       return `<div class="fin-row"><span class="sym">USD → ${code}</span><span class="px">${rate?.toFixed(4) ?? '—'}</span></div>`;
     }).join('');
 
-    // XAU/XAG are troy-ounce rates against USD (i.e. 1 USD = X ounces) — invert for $/oz
-    // XAU/XAG/XCU are troy-ounce rates against USD (i.e. 1 USD = X ounces).
+    // XAU/XAG are troy-ounce rates against USD (i.e. 1 USD = X ounces).
     // Invert for $/oz, then multiply by troy-ounces-per-kg (32.1507466) to
     // get $/kg instead — same live data, just a more intuitive unit.
     const OZ_PER_KG = 32.1507466;
     const goldPerKg = d.rates.XAU ? (1 / d.rates.XAU) * OZ_PER_KG : null;
     const silverPerKg = d.rates.XAG ? (1 / d.rates.XAG) * OZ_PER_KG : null;
-    const copperPerKg = d.rates.XCU ? (1 / d.rates.XCU) * OZ_PER_KG : null;
     document.getElementById('goldPrice').textContent = goldPerKg ? `$${goldPerKg.toLocaleString(undefined,{maximumFractionDigits:0})}` : '—';
     document.getElementById('silverPrice').textContent = silverPerKg ? `$${silverPerKg.toLocaleString(undefined,{maximumFractionDigits:0})}` : '—';
-    document.getElementById('copperPrice').textContent = copperPerKg ? `$${copperPerKg.toFixed(2)}` : '—';
   }catch(e){
     // Now proxied through /api/currency with server-side caching — a timeout
     // here would mean our OWN backend is unreachable, not exchangerate.fun
@@ -1319,10 +1315,6 @@ function respond(raw){
   if(q.includes('silver')){
     const s = DATA.currency?.XAG ? ((1/DATA.currency.XAG) * 32.1507466).toFixed(0) : null;
     return s ? `Silver is $${Number(s).toLocaleString()}/kg right now.` : "Metals data not yet acquired — ask again shortly.";
-  }
-  if(q.includes('copper')){
-    const c = DATA.currency?.XCU ? ((1/DATA.currency.XCU) * 32.1507466).toFixed(2) : null;
-    return c ? `Copper is $${c}/kg right now.` : "Copper data not available — check if XCU is in the source data.";
   }
   const CUR_NAMES = { eur:'EUR', euro:'EUR', gbp:'GBP', pound:'GBP', inr:'INR', rupee:'INR', jpy:'JPY', yen:'JPY', cny:'CNY', yuan:'CNY', aed:'AED', dirham:'AED' };
   const curHit = Object.keys(CUR_NAMES).find(k => q.includes(k));
