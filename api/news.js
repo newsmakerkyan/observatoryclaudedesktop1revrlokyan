@@ -1,18 +1,27 @@
 // /api/news.js — Vercel serverless function
-// Proxies Noozra (free, no-key news API) instead of calling it directly from
-// the browser. Two real benefits, not just "cleaner architecture":
 //
-// 1. Noozra's free tier caps at 100 requests/day PER IP. Calling it directly
-//    from the browser means every refresh/test during development burns that
-//    cap on YOUR home network's IP. Proxied through here, requests come from
-//    Vercel's server IP instead — a completely fresh quota, unaffected by any
-//    testing you've already done from your own connection.
-// 2. Server-side caching means many page visits within the cache window only
-//    cost ONE upstream request total, not one per visit — so the 100/day cap
-//    stretches much further under real traffic too.
+// SWITCHED PROVIDER: Noozra started returning HTTP 403 to our server the
+// same way exchangerate.fun did — same class of bot-protection issue that a
+// User-Agent header alone couldn't fix. Rather than keep chasing it, this
+// now uses NewsData.io: a well-documented, actively maintained news API
+// with a genuine free tier (200 requests/day) that explicitly permits use
+// on a public/personal site, unlike some competitors (e.g. GNews) whose
+// free tier legally forbids anything but private development.
+//
+// Needs a free key: sign up at newsdata.io, then set NEWSDATA_API_KEY in
+// your hosting platform's Environment Variables. See README.md.
+//
+// The response is normalized into the SAME shape the frontend already
+// expects ({ articles: [{ headline, url, source, published_at }] }) —
+// this means index.html needed ZERO changes for this swap.
+
+const CATEGORY_MAP = {
+  general: 'top', world: 'world', business: 'business',
+  tech: 'technology', science: 'science', sports: 'sports',
+};
 
 let cache = {}; // keyed by category
-const CACHE_MS = 10 * 60 * 1000;
+const CACHE_MS = 15 * 60 * 1000; // longer than before — this free tier is 200/day, not unlimited
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,19 +29,33 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
 
   const category = (req.query.category || 'general').toString().slice(0, 30);
-  const limit = Math.min(parseInt(req.query.limit) || 12, 20);
+  const ndCategory = CATEGORY_MAP[category] || 'top';
 
   const cached = cache[category];
   if (cached && Date.now() - cached.ts < CACHE_MS) {
     return res.status(200).json({ ...cached.data, cached: true });
   }
 
+  if (!process.env.NEWSDATA_API_KEY) {
+    return res.status(200).json({ articles: [], error: 'Server is missing NEWSDATA_API_KEY.' });
+  }
+
   try{
-    const r = await fetch(`https://noozra.com/api/articles?category=${encodeURIComponent(category)}&limit=${limit}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
+    const url = `https://newsdata.io/api/1/latest?apikey=${process.env.NEWSDATA_API_KEY}&category=${ndCategory}&language=en`;
+    const r = await fetch(url);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    cache[category] = { data: d, ts: Date.now() };
-    return res.status(200).json(d);
+
+    const articles = (d.results || []).slice(0, 12).map(a => ({
+      headline: a.title,
+      url: a.link,
+      source: a.source_id || a.source_name || 'unknown',
+      published_at: a.pubDate ? new Date(a.pubDate.replace(' ', 'T') + 'Z').toISOString() : new Date().toISOString(),
+    }));
+
+    const payload = { articles };
+    cache[category] = { data: payload, ts: Date.now() };
+    return res.status(200).json(payload);
   } catch (e) {
     if (cached) return res.status(200).json({ ...cached.data, cached: true, stale: true });
     return res.status(200).json({ articles: [], error: e.message });
