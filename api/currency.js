@@ -15,9 +15,11 @@
 // show "—" until a reliable free source for them is found.
 //
 // Metals (gold/silver/copper) aren't something Frankfurter/ECB provides at
-// all, so exchangerate.fun is still attempted for JUST that — best-effort,
-// with the User-Agent fix kept in case it starts working again. If it fails,
-// only the Metals panel shows "—"; currency rates are unaffected either way.
+// all. Gold and silver now come from xaus.com (https://xaus.com/api/v1/spot)
+// — confirmed free, no key, no auth, no rate limits, single call gives both.
+// Copper still isn't available from any free source I could find, so it
+// keeps attempting the old exchangerate.fun call as a last-ditch try; if
+// that keeps failing, only Copper shows "—" — everything else is unaffected.
 
 const AED_PEG = 3.6725; // UAE Central Bank law, fixed since 1997
 const SAR_PEG = 3.75;   // Saudi Central Bank (SAMA), fixed since 1986
@@ -35,7 +37,7 @@ module.exports = async (req, res) => {
   }
 
   const rates = {};
-  let currencyOk = false, metalsOk = false;
+  let currencyOk = false, goldSilverOk = false, copperOk = false;
 
   try{
     const r = await fetch('https://api.frankfurter.app/latest?from=USD');
@@ -49,26 +51,44 @@ module.exports = async (req, res) => {
   }catch(e){ /* handled by currencyOk staying false */ }
 
   try{
-    const r2 = await fetch('https://api.exchangerate.fun/latest?base=USD', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-    });
+    const r2 = await fetch('https://xaus.com/api/v1/spot?compact=1');
     if(r2.ok){
       const d2 = await r2.json();
-      ['XAU','XAG','XCU'].forEach(k => { if(d2.rates?.[k]) rates[k] = d2.rates[k]; });
-      metalsOk = true;
+      // Frontend expects the same "inverse rate" convention as the old
+      // source (rates.XAU = ounces of gold per 1 USD), so we convert xaus's
+      // direct $/oz prices to that same shape — keeps the rest of the code
+      // (and the $/kg math already there) unchanged.
+      if(d2.spot_usd_oz) rates.XAU = 1 / d2.spot_usd_oz;
+      if(d2.silver_usd_oz) rates.XAG = 1 / d2.silver_usd_oz;
+      goldSilverOk = true;
     }
-  }catch(e){ /* handled by metalsOk staying false */ }
+  }catch(e){ /* handled by goldSilverOk staying false */ }
+
+  try{
+    const r3 = await fetch('https://api.exchangerate.fun/latest?base=USD', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+    });
+    if(r3.ok){
+      const d3 = await r3.json();
+      if(d3.rates?.XCU) rates.XCU = d3.rates.XCU;
+      copperOk = true;
+    }
+  }catch(e){ /* handled by copperOk staying false */ }
 
   const payload = {
     rates,
-    source: { currency: currencyOk ? 'frankfurter' : 'unavailable', metals: metalsOk ? 'exchangerate.fun' : 'unavailable' },
+    source: {
+      currency: currencyOk ? 'frankfurter' : 'unavailable',
+      goldSilver: goldSilverOk ? 'xaus.com' : 'unavailable',
+      copper: copperOk ? 'exchangerate.fun' : 'unavailable',
+    },
     updated: new Date().toISOString(),
   };
 
-  if(currencyOk || metalsOk){
+  if(currencyOk || goldSilverOk || copperOk){
     cache = { data: payload, ts: Date.now() };
     return res.status(200).json(payload);
   }
   if(cache.data) return res.status(200).json({ ...cache.data, cached: true, stale: true });
-  return res.status(200).json({ rates: {}, error: 'Both currency and metals providers unreachable.' });
+  return res.status(200).json({ rates: {}, error: 'All providers unreachable.' });
 };
