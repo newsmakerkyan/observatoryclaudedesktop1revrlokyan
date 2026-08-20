@@ -306,13 +306,7 @@
   .clock-card .cplace{font-family:var(--sans); font-size:10px; color:var(--text-muted); margin-top:3px;}
 
   /* ---------- FINANCIAL DASHBOARD ---------- */
-  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; align-items:start; grid-auto-flow:dense;}
-  .fin-panel-wide{grid-column: span 2;}
-  @media(max-width:700px){ .fin-panel-wide{grid-column: span 1;} }
-  .fin-cols-2{display:grid; grid-template-columns:1fr 1fr; gap:0 18px;}
-  .fin-cols-2 .fin-row{grid-column:auto;}
-  .fin-cols-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 14px;}
-  .fin-cols-3 .fin-row{grid-column:auto; font-size:11px;}
+  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; align-items:start;}
   .atmos-tight .row{padding:5px 0;}
 
   /* ---------- FESTIVALS ---------- */
@@ -455,9 +449,9 @@
 <div class="wide" id="sec-finance">
   <div class="section-head">Global Financial Dashboard <span class="sub" id="finUpdated">stocks · metals · currency · crypto</span></div>
   <div class="fin-grid">
-    <div class="fin-panel fin-panel-wide">
+    <div class="fin-panel">
       <h3>Major Companies</h3>
-      <div id="stocksList" class="fin-cols-2"><div class="skel"></div></div>
+      <div id="stocksList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
     </div>
     <div class="fin-panel">
       <h3>Metals</h3>
@@ -467,9 +461,9 @@
         <div class="m"><div class="lbl">COPPER / KG</div><div class="val" id="copperPrice">--</div></div>
       </div>
     </div>
-    <div class="fin-panel fin-panel-wide">
+    <div class="fin-panel">
       <h3>Currency — 1 USD</h3>
-      <div id="currencyList" class="fin-cols-3 panel-body"><div class="skel"></div></div>
+      <div id="currencyList" class="panel-body"><div class="skel"></div></div>
     </div>
     <div class="fin-panel" id="sec-finance-crypto">
       <h3>Crypto Market</h3>
