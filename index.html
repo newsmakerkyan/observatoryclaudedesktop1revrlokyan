@@ -306,7 +306,7 @@
   .clock-card .cplace{font-family:var(--sans); font-size:10px; color:var(--text-muted); margin-top:3px;}
 
   /* ---------- FINANCIAL DASHBOARD ---------- */
-  .fin-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 280px)); gap:14px; align-items:start; justify-content:start;}
+  .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 280px)); gap:14px; align-items:start; justify-content:start;}
   .atmos-tight .row{padding:5px 0;}
 
   /* ---------- FESTIVALS ---------- */
@@ -323,6 +323,11 @@
   .festival-card .fcount{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--phosphor); text-align:right; white-space:nowrap;}
   .festival-card.today .fcount{color:var(--amber); font-weight:700;}
   .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px; min-height:120px;}
+  .fin-cols-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 18px;}
+  .currency-scroll{max-height:260px; overflow-y:auto;}
+  .currency-scroll::-webkit-scrollbar{width:6px;}
+  .currency-scroll::-webkit-scrollbar-thumb{background:var(--phosphor-dim);}
+  .currency-scroll::-webkit-scrollbar-track{background:var(--panel);}
   .fin-panel h3{margin:0 0 8px; font-family:var(--mono); font-size:10.5px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:500;}
   .fin-row{display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--grid); font-family:var(--mono); font-size:12px;}
   .fin-row:last-child{border-bottom:none;}
@@ -460,10 +465,6 @@
         <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
       </div>
     </div>
-    <div class="fin-panel">
-      <h3>Currency — 1 USD</h3>
-      <div id="currencyList" class="panel-body"><div class="skel"></div></div>
-    </div>
     <div class="fin-panel" id="sec-finance-crypto">
       <h3>Crypto Market</h3>
       <div id="cryptoFinList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
@@ -472,6 +473,11 @@
       <h3>Market News</h3>
       <div id="finNewsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
     </div>
+  </div>
+
+  <div class="fin-panel" style="margin-top:14px; width:100%;">
+    <h3>Currency — 1 USD</h3>
+    <div id="currencyList" class="fin-cols-3 panel-body currency-scroll"><div class="skel"></div></div>
   </div>
 </div>
 
@@ -906,6 +912,7 @@ async function loadCurrencyAndMetals(){
     const silverPerKg = d.rates.XAG ? (1 / d.rates.XAG) * OZ_PER_KG : null;
     document.getElementById('goldPrice').textContent = goldPerKg ? `$${goldPerKg.toLocaleString(undefined,{maximumFractionDigits:0})}` : '—';
     document.getElementById('silverPrice').textContent = silverPerKg ? `$${silverPerKg.toLocaleString(undefined,{maximumFractionDigits:0})}` : '—';
+    if(goldPerKg){ tickerItems[4] = `GOLD <b>$${goldPerKg.toLocaleString(undefined,{maximumFractionDigits:0})}/kg</b>`; updateTicker(); }
   }catch(e){
     // Now proxied through /api/currency with server-side caching — a timeout
     // here would mean our OWN backend is unreachable, not exchangerate.fun
@@ -1110,15 +1117,30 @@ function getMoonPhase(date = new Date()){
     { max: 29.53059, name: 'New Moon (No Moon)',       icon: '🌑' },
   ];
   const p = phases.find(p => phase < p.max) || phases[phases.length - 1];
-  const daysUntilFull = phase <= 14.76529 ? (14.76529 - phase) : (14.76529 + synodicMonth - phase);
-  return { name: p.name, icon: p.icon, illumination: illumination.toFixed(0), daysUntilFull: daysUntilFull.toFixed(1) };
+  // Key phase points in the 29.53-day cycle: New=0, First Quarter=7.38,
+  // Full=14.77, Last Quarter=22.15. "Days until" wraps to next cycle if
+  // that point already passed this cycle.
+  const until = target => (phase <= target) ? (target - phase) : (target + synodicMonth - phase);
+  const daysUntilFull = until(14.76529);
+  const daysUntilNoMoon = until(synodicMonth); // next New Moon is one full cycle from the last one
+  const daysUntilHalfMoon = Math.min(until(7.38265), until(22.14794)); // nearest of either quarter
+  return {
+    name: p.name, icon: p.icon, illumination: illumination.toFixed(0),
+    daysUntilFull: daysUntilFull.toFixed(1),
+    daysUntilNoMoon: daysUntilNoMoon.toFixed(1),
+    daysUntilHalfMoon: daysUntilHalfMoon.toFixed(1),
+  };
 }
 function renderMoonPhase(){
   const m = getMoonPhase();
   document.getElementById('moonPhaseData').innerHTML = `
     <div class="row"><span class="tag">${m.icon} ${m.name}</span><span class="val">${m.illumination}% lit</span></div>
-    <div class="row"><span class="tag">Next full moon</span><span class="val">${m.daysUntilFull}d</span></div>
+    <div class="row"><span class="tag">🌕 Next Full Moon</span><span class="val">${m.daysUntilFull}d</span></div>
+    <div class="row"><span class="tag">🌓 Next Half Moon</span><span class="val">${m.daysUntilHalfMoon}d</span></div>
+    <div class="row"><span class="tag">🌑 Next No Moon</span><span class="val">${m.daysUntilNoMoon}d</span></div>
   `;
+  tickerItems[5] = `MOON PHASE: <b>${m.icon} ${m.name}</b> (${m.illumination}% lit)`;
+  updateTicker();
 }
 
 /* ================= NEWS WIRE (Noozra — no key, 100 req/day/IP) ================= */
@@ -1240,6 +1262,11 @@ async function loadFestivals(){
       </div>`;
     }).join('');
     document.getElementById('festivalsUpdated').textContent = `updated ${new Date().toLocaleTimeString()}`;
+    if(combined[0]){
+      const n = daysUntil(combined[0].date);
+      tickerItems[6] = `NEXT: <b>${combined[0].name}</b> ${combined[0].isToday ? '— TODAY' : `in ${n}d`}`;
+      updateTicker();
+    }
     applySearchFilter();
   }catch(e){
     const reason = e.message.includes('404') ? 'api/festivals.js not deployed yet — see chat for upload steps' : `SIGNAL LOST (${e.message})`;
