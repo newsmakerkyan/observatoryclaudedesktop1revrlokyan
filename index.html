@@ -324,10 +324,6 @@
   .festival-card.today .fcount{color:var(--amber); font-weight:700;}
   .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px; min-height:120px;}
   .fin-cols-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 18px;}
-  .currency-scroll{max-height:260px; overflow-y:auto;}
-  .currency-scroll::-webkit-scrollbar{width:6px;}
-  .currency-scroll::-webkit-scrollbar-thumb{background:var(--phosphor-dim);}
-  .currency-scroll::-webkit-scrollbar-track{background:var(--panel);}
   .fin-panel h3{margin:0 0 8px; font-family:var(--mono); font-size:10.5px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:500;}
   .fin-row{display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--grid); font-family:var(--mono); font-size:12px;}
   .fin-row:last-child{border-bottom:none;}
@@ -459,6 +455,10 @@
       <div id="stocksList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
     </div>
     <div class="fin-panel">
+      <h3>Major Indices <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
+      <div id="indicesList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+    </div>
+    <div class="fin-panel">
       <h3>Metals</h3>
       <div class="fin-metals" id="metalsList">
         <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
@@ -477,7 +477,7 @@
 
   <div class="fin-panel" style="margin-top:14px; width:100%;">
     <h3>Currency — 1 USD</h3>
-    <div id="currencyList" class="fin-cols-3 panel-body currency-scroll"><div class="skel"></div></div>
+    <div id="currencyList" class="fin-cols-3 panel-body"><div class="skel"></div></div>
   </div>
 </div>
 
@@ -927,6 +927,7 @@ async function loadCurrencyAndMetals(){
 // function so the key is never exposed. Data may lag a little on the free
 // tier and any symbol the plan doesn't cover just shows "—" instead of
 const STOCK_LABELS = { AAPL:'Apple', MSFT:'Microsoft', GOOGL:'Google', AMZN:'Amazon', NVDA:'Nvidia', TSLA:'Tesla', META:'Meta', NFLX:'Netflix' };
+const INDEX_LABELS = { SPX:'S&P 500 (SPY)', DJI:'Dow Jones (DIA)', IXIC:'Nasdaq (QQQ)', FTSE:'FTSE 100 (FLGB)', GDAXI:'DAX (EWG)', FCHI:'CAC 40 (EWQ)', N225:'Nikkei 225 (EWJ)', HSI:'Hang Seng (EWH)', SHCOMP:'Shanghai Comp. (ASHR)' };
 function renderFinRows(containerId, labels, values, simulated){
   const rows = Object.entries(labels).map(([sym,name]) => {
     const v = values?.[sym];
@@ -941,14 +942,17 @@ async function loadFinance(){
     const d = await resilientFetch('/api/finance');
     DATA.finance = d;
     renderFinRows('stocksList', STOCK_LABELS, d.stocks, d.simulated);
+    renderFinRows('indicesList', INDEX_LABELS, d.indices, d.simulated);
     applySearchFilter();
     // Be honest in the UI when this is placeholder data, not real quotes —
     // a convincing-looking fake number is worse than no number at all.
     document.getElementById('finUpdated').textContent = d.simulated
-      ? 'stocks: NO LIVE BACKEND — showing placeholders, not real prices'
+      ? 'stocks/indices: NO LIVE BACKEND — showing placeholders, not real prices'
       : `updated ${new Date().toLocaleTimeString()}`;
   }catch(e){
-    document.getElementById('stocksList').innerHTML = '<div class="loading">BACKEND NOT CONNECTED — see README to deploy /api/finance.js</div>';
+    const note = '<div class="loading">BACKEND NOT CONNECTED — see README to deploy /api/finance.js</div>';
+    document.getElementById('stocksList').innerHTML = note;
+    document.getElementById('indicesList').innerHTML = note;
   }
 }
 
@@ -1357,6 +1361,13 @@ function respond(raw){
     const sym = STOCK_NAMES[stockHit];
     const v = DATA.finance?.stocks?.[sym];
     return v ? `${sym} $${v.price.toFixed(2)} (${v.change>=0?'+':''}${v.change.toFixed(1)}% today).` : `${sym} data not available (backend not connected, or free-tier limit).`;
+  }
+  const INDEX_NAMES = { 'sp500':'SPX', 's&p':'SPX', 'dow':'DJI', 'nasdaq':'IXIC', 'ftse':'FTSE', 'dax':'GDAXI', 'cac':'FCHI', 'nikkei':'N225', 'hang seng':'HSI', 'shanghai':'SHCOMP' };
+  const idxHit = Object.keys(INDEX_NAMES).find(k => q.includes(k));
+  if(idxHit){
+    const sym = INDEX_NAMES[idxHit];
+    const v = DATA.finance?.indices?.[sym];
+    return v ? `${sym} tracking ETF: ${v.price.toFixed(2)} (${v.change>=0?'+':''}${v.change.toFixed(1)}% today) — this is the ETF price, not the raw index point value.` : `${sym} data not available (backend not connected, or key issue).`;
   }
 
   const station = findStation(q);
