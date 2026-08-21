@@ -3,21 +3,29 @@
 // hosting platform's Environment Variables (free key at finnhub.io — 60
 // calls/minute, no credit card).
 //
-// Deliberately stocks-only: an earlier version also showed 9 international
-// "indices" via ETF proxies (no free source gives raw index points), but
-// that added complexity and still wasn't the real thing. Just the 8
-// companies keeps this simple, fast, and 100% real data with no caveats.
+// Indices: no free source anywhere gives raw international index points
+// (S&P 500, FTSE, DAX, etc.) — that's licensed exchange data everywhere,
+// free or paid. Instead these are real, live prices of well-known ETFs that
+// TRACK each index (e.g. SPY for the S&P 500) — genuine live data, just of
+// the ETF's share price, not the index's own point value. The frontend
+// labels each one with its ETF ticker so this is never disguised as
+// something it isn't.
 
 const STOCKS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX'];
+const INDEX_PROXIES = {
+  SPX: 'SPY', DJI: 'DIA', IXIC: 'QQQ', FTSE: 'FLGB', GDAXI: 'EWG',
+  FCHI: 'EWQ', N225: 'EWJ', HSI: 'EWH', SHCOMP: 'ASHR',
+};
 
 let cache = { data: null, ts: 0 };
-const CACHE_MS = 10 * 60 * 1000;
+const CACHE_MS = 15 * 60 * 1000;
 
 function simulatedPayload(){
   const zero = { price: 0, change: 0 };
-  const stocks = {};
+  const stocks = {}, indices = {};
   STOCKS.forEach(s => stocks[s] = zero);
-  return { stocks, updated: new Date().toISOString(), simulated: true };
+  Object.keys(INDEX_PROXIES).forEach(i => indices[i] = zero);
+  return { stocks, indices, updated: new Date().toISOString(), simulated: true };
 }
 
 async function fetchQuote(symbol, key){
@@ -44,15 +52,20 @@ module.exports = async (req, res) => {
 
   try{
     const key = process.env.FINNHUB_API_KEY;
-    const results = await Promise.all(STOCKS.map(async sym => [sym, await fetchQuote(sym, key)]));
-    const stocks = {};
-    results.forEach(([sym, q]) => { if(q) stocks[sym] = q; });
+    const [stockResults, indexResults] = await Promise.all([
+      Promise.all(STOCKS.map(async sym => [sym, await fetchQuote(sym, key)])),
+      Promise.all(Object.entries(INDEX_PROXIES).map(async ([id, etf]) => [id, await fetchQuote(etf, key)])),
+    ]);
 
-    if(Object.keys(stocks).length === 0){
+    const stocks = {}, indices = {};
+    stockResults.forEach(([sym, q]) => { if(q) stocks[sym] = q; });
+    indexResults.forEach(([id, q]) => { if(q) indices[id] = q; });
+
+    if(Object.keys(stocks).length === 0 && Object.keys(indices).length === 0){
       return res.status(200).json(simulatedPayload());
     }
 
-    const payload = { stocks, updated: new Date().toISOString() };
+    const payload = { stocks, indices, updated: new Date().toISOString() };
     cache = { data: payload, ts: Date.now() };
     return res.status(200).json(payload);
   } catch (e) {
