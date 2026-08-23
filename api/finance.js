@@ -1,31 +1,52 @@
 // /api/finance.js — Vercel serverless function
-// Uses Finnhub for real, live US stock quotes. Set FINNHUB_API_KEY in your
-// hosting platform's Environment Variables (free key at finnhub.io — 60
-// calls/minute, no credit card).
+// Uses Finnhub for real, live US quotes. Set FINNHUB_API_KEY in your hosting
+// platform's Environment Variables (free key at finnhub.io — 60 calls/
+// minute, no credit card).
 //
-// Indices: no free source anywhere gives raw international index points
-// (S&P 500, FTSE, DAX, etc.) — that's licensed exchange data everywhere,
-// free or paid. Instead these are real, live prices of well-known ETFs that
-// TRACK each index (e.g. SPY for the S&P 500) — genuine live data, just of
-// the ETF's share price, not the index's own point value. The frontend
-// labels each one with its ETF ticker so this is never disguised as
-// something it isn't.
+// Indices & Bonds: no free source gives raw index points or bond yields
+// directly — that's licensed data everywhere. These use real, live prices
+// of well-known ETFs that TRACK each market segment (e.g. SPY for the S&P
+// 500, TLT for long-term Treasuries) — genuine live data, just of the ETF's
+// share price. The frontend labels each with its ETF ticker so this is
+// never disguised as the underlying index/yield itself.
+//
+// Mutual Funds: most traditional mutual funds only publish one NAV per day
+// (not continuously quoted like a stock), and free tiers often don't cover
+// them at all. These are attempted the same way as everything else — any
+// that don't resolve just show "—" rather than breaking the panel.
 
 const STOCKS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX'];
+const SHARES = ['JPM', 'WMT', 'V', 'JNJ', 'BRK.B'];
 const INDEX_PROXIES = {
   SPX: 'SPY', DJI: 'DIA', IXIC: 'QQQ', FTSE: 'FLGB', GDAXI: 'EWG',
   FCHI: 'EWQ', N225: 'EWJ', HSI: 'EWH', SHCOMP: 'ASHR',
 };
+const BOND_PROXIES = {
+  US20Y: 'TLT',   // 20+ Year Treasury
+  US10Y: 'IEF',   // 7-10 Year Treasury
+  TOTAL: 'BND',   // Total US Bond Market
+  HIYIELD: 'HYG', // High-Yield Corporate
+};
+const MUTUAL_FUNDS = ['VFIAX', 'FXAIX', 'VTSAX'];
 
 let cache = { data: null, ts: 0 };
 const CACHE_MS = 15 * 60 * 1000;
 
-function simulatedPayload(){
+function simulatedGroup(ids){
   const zero = { price: 0, change: 0 };
-  const stocks = {}, indices = {};
-  STOCKS.forEach(s => stocks[s] = zero);
-  Object.keys(INDEX_PROXIES).forEach(i => indices[i] = zero);
-  return { stocks, indices, updated: new Date().toISOString(), simulated: true };
+  const g = {};
+  ids.forEach(i => g[i] = zero);
+  return g;
+}
+function simulatedPayload(){
+  return {
+    stocks: simulatedGroup(STOCKS),
+    indices: simulatedGroup(Object.keys(INDEX_PROXIES)),
+    shares: simulatedGroup(SHARES),
+    bonds: simulatedGroup(Object.keys(BOND_PROXIES)),
+    funds: simulatedGroup(MUTUAL_FUNDS),
+    updated: new Date().toISOString(), simulated: true,
+  };
 }
 
 async function fetchQuote(symbol, key){
@@ -35,6 +56,13 @@ async function fetchQuote(symbol, key){
   const d = await r.json();
   if(!d || typeof d.c !== 'number' || d.c === 0) return null;
   return { price: d.c, change: d.dp };
+}
+
+async function fetchGroup(ids, symbolFor, key){
+  const results = await Promise.all(ids.map(async id => [id, await fetchQuote(symbolFor(id), key)]));
+  const out = {};
+  results.forEach(([id, q]) => { if(q) out[id] = q; });
+  return out;
 }
 
 module.exports = async (req, res) => {
@@ -52,20 +80,20 @@ module.exports = async (req, res) => {
 
   try{
     const key = process.env.FINNHUB_API_KEY;
-    const [stockResults, indexResults] = await Promise.all([
-      Promise.all(STOCKS.map(async sym => [sym, await fetchQuote(sym, key)])),
-      Promise.all(Object.entries(INDEX_PROXIES).map(async ([id, etf]) => [id, await fetchQuote(etf, key)])),
+    const [stocks, indices, shares, bonds, funds] = await Promise.all([
+      fetchGroup(STOCKS, s => s, key),
+      fetchGroup(Object.keys(INDEX_PROXIES), id => INDEX_PROXIES[id], key),
+      fetchGroup(SHARES, s => s, key),
+      fetchGroup(Object.keys(BOND_PROXIES), id => BOND_PROXIES[id], key),
+      fetchGroup(MUTUAL_FUNDS, s => s, key),
     ]);
 
-    const stocks = {}, indices = {};
-    stockResults.forEach(([sym, q]) => { if(q) stocks[sym] = q; });
-    indexResults.forEach(([id, q]) => { if(q) indices[id] = q; });
-
-    if(Object.keys(stocks).length === 0 && Object.keys(indices).length === 0){
+    const totalResolved = Object.keys(stocks).length + Object.keys(indices).length;
+    if(totalResolved === 0){
       return res.status(200).json(simulatedPayload());
     }
 
-    const payload = { stocks, indices, updated: new Date().toISOString() };
+    const payload = { stocks, indices, shares, bonds, funds, updated: new Date().toISOString() };
     cache = { data: payload, ts: Date.now() };
     return res.status(200).json(payload);
   } catch (e) {
