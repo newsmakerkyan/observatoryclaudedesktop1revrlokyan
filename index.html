@@ -187,6 +187,19 @@
   .chat-head b{color:var(--phosphor);}
   .chat-head .close{cursor:pointer; color:var(--text-muted); font-size:14px;}
 
+  .ai-provider-toggle{
+    display:flex; align-items:center; gap:8px; padding:8px 14px;
+    border-bottom:1px solid var(--panel-edge); font-family:var(--mono); font-size:10px;
+  }
+  .ai-provider-label{color:var(--text-muted); letter-spacing:0.08em;}
+  .ai-model-select{
+    flex:1; background:var(--panel); border:1px solid var(--panel-edge); color:var(--phosphor);
+    font-family:var(--mono); font-size:10.5px; padding:4px 6px; cursor:pointer;
+  }
+  .ai-model-select option{background:var(--panel); color:var(--text);}
+  .ai-provider-toggle .clear{margin-left:auto; cursor:pointer; color:var(--text-muted); font-size:12px;}
+  .ai-provider-toggle .clear:hover{color:var(--red);}
+
   .chat-log{flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
   .msg{font-family:var(--mono); font-size:12px; line-height:1.5; max-width:88%;}
   .msg.bot{color:var(--text); align-self:flex-start;}
@@ -473,6 +486,18 @@
       <h3>Market News</h3>
       <div id="finNewsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
     </div>
+    <div class="fin-panel">
+      <h3>Shares</h3>
+      <div id="sharesList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+    </div>
+    <div class="fin-panel">
+      <h3>Bonds <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
+      <div id="bondsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+    </div>
+    <div class="fin-panel">
+      <h3>Mutual Funds</h3>
+      <div id="fundsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+    </div>
   </div>
 
   <div class="fin-panel" style="margin-top:14px; width:100%;">
@@ -529,6 +554,17 @@
 <button id="chatToggle" aria-label="Open operator chat"><span class="pip"></span>◈</button>
 <div id="chatPanel">
   <div class="chat-head"><span><b>OPERATOR</b> // ASK ABOUT THE FEED</span><span class="close" id="chatClose">✕</span></div>
+  <div class="ai-provider-toggle">
+    <span class="ai-provider-label active" style="color:var(--text-muted); text-transform:none; letter-spacing:0;">AI:</span>
+    <select id="aiModelPicker" class="ai-model-select">
+      <option value="gemini-flash">Gemini 2.5 Flash</option>
+      <option value="groq-llama">Llama 3.3 70B (Groq)</option>
+      <option value="deepseek-r1">DeepSeek R1</option>
+      <option value="qwen-coder">Qwen 2.5 Coder 32B</option>
+      <option value="mistral-7b">Mistral 7B</option>
+    </select>
+    <span class="clear" id="chatClear" title="Clear saved chat history">🗑</span>
+  </div>
   <div class="chat-log" id="chatLog"></div>
   <div class="chat-suggest" id="chatSuggest">
     <button data-q="iss">ISS status</button>
@@ -928,6 +964,9 @@ async function loadCurrencyAndMetals(){
 // tier and any symbol the plan doesn't cover just shows "—" instead of
 const STOCK_LABELS = { AAPL:'Apple', MSFT:'Microsoft', GOOGL:'Google', AMZN:'Amazon', NVDA:'Nvidia', TSLA:'Tesla', META:'Meta', NFLX:'Netflix' };
 const INDEX_LABELS = { SPX:'S&P 500 (SPY)', DJI:'Dow Jones (DIA)', IXIC:'Nasdaq (QQQ)', FTSE:'FTSE 100 (FLGB)', GDAXI:'DAX (EWG)', FCHI:'CAC 40 (EWQ)', N225:'Nikkei 225 (EWJ)', HSI:'Hang Seng (EWH)', SHCOMP:'Shanghai Comp. (ASHR)' };
+const SHARE_LABELS = { JPM:'JPMorgan', WMT:'Walmart', V:'Visa', JNJ:'Johnson & Johnson', 'BRK.B':'Berkshire Hathaway' };
+const BOND_LABELS = { US20Y:'20Y+ Treasury (TLT)', US10Y:'7-10Y Treasury (IEF)', TOTAL:'Total Bond Mkt (BND)', HIYIELD:'High-Yield Corp (HYG)' };
+const FUND_LABELS = { VFIAX:'Vanguard 500 (VFIAX)', FXAIX:'Fidelity 500 (FXAIX)', VTSAX:'Vanguard Total Mkt (VTSAX)' };
 function renderFinRows(containerId, labels, values, simulated){
   const rows = Object.entries(labels).map(([sym,name]) => {
     const v = values?.[sym];
@@ -943,6 +982,9 @@ async function loadFinance(){
     DATA.finance = d;
     renderFinRows('stocksList', STOCK_LABELS, d.stocks, d.simulated);
     renderFinRows('indicesList', INDEX_LABELS, d.indices, d.simulated);
+    renderFinRows('sharesList', SHARE_LABELS, d.shares, d.simulated);
+    renderFinRows('bondsList', BOND_LABELS, d.bonds, d.simulated);
+    renderFinRows('fundsList', FUND_LABELS, d.funds, d.simulated);
     applySearchFilter();
     // Be honest in the UI when this is placeholder data, not real quotes —
     // a convincing-looking fake number is worse than no number at all.
@@ -953,6 +995,9 @@ async function loadFinance(){
     const note = '<div class="loading">BACKEND NOT CONNECTED — see README to deploy /api/finance.js</div>';
     document.getElementById('stocksList').innerHTML = note;
     document.getElementById('indicesList').innerHTML = note;
+    document.getElementById('sharesList').innerHTML = note;
+    document.getElementById('bondsList').innerHTML = note;
+    document.getElementById('fundsList').innerHTML = note;
   }
 }
 
@@ -1411,12 +1456,39 @@ function marketLine(id, sym){
 }
 
 const chatLog = document.getElementById('chatLog');
-function addMsg(text, who){
+
+/* ---- AI model selection (persisted) ---- */
+// The value sent matches the key names in api/chat.js's MODELS object —
+// keep these two lists in sync if you ever add/remove a model.
+let aiProvider = localStorage.getItem('observatory_ai_provider') || 'gemini-flash';
+const picker = document.getElementById('aiModelPicker');
+picker.value = aiProvider;
+picker.addEventListener('change', e => {
+  aiProvider = e.target.value;
+  localStorage.setItem('observatory_ai_provider', aiProvider);
+});
+
+/* ---- Saved chat history (persisted in this browser, via localStorage) ---- */
+const CHAT_HISTORY_KEY = 'observatory_chat_history';
+function loadSavedHistory(){
+  try{ return JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]'); }
+  catch{ return []; }
+}
+function saveToHistory(text, who){
+  const history = loadSavedHistory();
+  history.push({ text, who, ts: Date.now() });
+  // Cap stored history so localStorage doesn't grow unbounded over time.
+  if(history.length > 200) history.splice(0, history.length - 200);
+  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
+}
+
+function addMsg(text, who, skipSave){
   const div = document.createElement('div');
   div.className = `msg ${who}`;
   div.textContent = text;
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
+  if(!skipSave && who !== 'thinking') saveToHistory(text, who);
   return div;
 }
 async function handleSend(text){
@@ -1432,16 +1504,16 @@ async function handleSend(text){
     return;
   }
 
-  // Fallback: real AI via the secure backend, for anything outside the
-  // dashboard's own data. Requires /api/chat.js to be deployed with a
-  // GROQ_API_KEY set — see README.md.
-  const thinkingEl = addMsg('thinking…', 'thinking');
+  // Fallback: real AI via the secure backend — provider picked by the slider.
+  // Requires the matching key (GROQ_API_KEY or GEMINI_API_KEY) set server-side.
+  const thinkingEl = addMsg('thinking…', 'thinking', true);
   try{
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: t,
+        provider: aiProvider,
         context: { quakes: DATA.quakes.slice(0,3), iss: DATA.iss, markets: DATA.markets, atmos: DATA.atmos, finance: DATA.finance }
       }),
     });
@@ -1451,7 +1523,7 @@ async function handleSend(text){
     addMsg(data.reply, 'bot');
   }catch(e){
     thinkingEl.remove();
-    addMsg("Can't reach the AI backend — is /api/chat deployed with GROQ_API_KEY set? See README.md.", 'bot');
+    addMsg("Can't reach the AI backend — is /api/chat deployed with the right key set? See README.md.", 'bot');
   }
 }
 
@@ -1466,7 +1538,19 @@ document.getElementById('chatToggle').addEventListener('click', () => {
 document.getElementById('chatClose').addEventListener('click', () => {
   document.getElementById('chatPanel').classList.remove('open');
 });
-addMsg("Operator online. Ask me about the ISS, quakes, markets, weather — or anything else, I'll bring in real AI for the rest.", 'bot');
+document.getElementById('chatClear').addEventListener('click', () => {
+  localStorage.removeItem(CHAT_HISTORY_KEY);
+  chatLog.innerHTML = '';
+  addMsg("Chat history cleared. I'm a full AI chatbot — ask me anything, or check in on the ISS, quakes, markets, weather, whatever's on your mind.", 'bot');
+});
+
+// Restore saved history on load, or show the greeting if there's nothing saved.
+const savedHistory = loadSavedHistory();
+if(savedHistory.length){
+  savedHistory.forEach(m => addMsg(m.text, m.who, true));
+} else {
+  addMsg("Operator online — I'm a full AI chatbot, ask me anything. I can also check in on the ISS, quakes, markets, weather, or whatever's live on this dashboard.", 'bot');
+}
 
 /* ================= BOOT ================= */
 // Deliberately staggered rather than fired all at once: the globe's WebGL
