@@ -1,18 +1,26 @@
 // /api/chat.js — Vercel serverless function
-// Holds the AI provider key server-side. NEVER exposed to the browser.
-// Set GROQ_API_KEY in your hosting platform's Environment Variables.
+// Everything routes through OpenRouter now — ONE key (OPENROUTER_API_KEY)
+// gives access to all 5 models below, instead of juggling a separate key
+// per provider. Set OPENROUTER_API_KEY in your hosting platform's
+// Environment Variables (openrouter.ai — free signup, no card, no Google
+// account age-restriction issue like direct Gemini access had).
 //
-// Uses Groq (free tier, Llama 3.3 70B) by default. To use OpenAI/Claude/Gemini
-// instead, swap the fetch URL + auth header + model name below — the request/
-// response shape you send to the frontend can stay identical.
+// The "Llama 3.3 70B (Groq)" option specifically asks OpenRouter to route
+// through Groq's infrastructure via the `provider.order` field — so you
+// still get Groq's speed, just through the single unified key.
+
+const MODELS = {
+  'groq-llama':  { model: 'meta-llama/llama-3.3-70b-instruct:free', provider: { order: ['Groq'], allow_fallbacks: true } },
+  'deepseek-r1': { model: 'deepseek/deepseek-r1:free' },
+  'qwen-coder':  { model: 'qwen/qwen-2.5-coder-32b-instruct:free' },
+  'gemini-flash':{ model: 'google/gemini-2.5-flash:free' },
+  'mistral-7b':  { model: 'mistralai/mistral-7b-instruct:free' },
+};
+const DEFAULT_MODEL_KEY = 'gemini-flash';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX = 20; // requests per IP per minute
+const RATE_LIMIT_MAX = 20;
 const hits = new Map();
-// NOTE: this in-memory limiter resets whenever the function cold-starts —
-// normal on serverless, fine for personal traffic. For real traffic, swap
-// for a durable store (Vercel Edge Config or Upstash Redis, both free-tier).
-
 function isRateLimited(ip) {
   const now = Date.now();
   const arr = (hits.get(ip) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
@@ -20,6 +28,24 @@ function isRateLimited(ip) {
   hits.set(ip, arr);
   return arr.length > RATE_LIMIT_MAX;
 }
+
+// Relaxed grounding rule: OPERATOR answers general knowledge like a normal
+// assistant. The one strict rule is about THIS DASHBOARD's own live numbers
+// specifically — never invent a stock price, quake magnitude, etc. that
+// isn't in the data block below.
+const SYSTEM_PROMPT = (context) =>
+  'You are OPERATOR, a genuine, full-featured AI chatbot — think and respond like a normal, capable AI assistant ' +
+  '(the kind people have real conversations with), not a narrow search tool or a bot that only answers questions ' +
+  'about the page it happens to live on. You can discuss absolutely anything: general knowledge, advice, ' +
+  'explanations, creative requests, casual conversation, whatever the person actually wants to talk about. You ' +
+  'also happen to be embedded in a live dashboard called Observatory, so you can reference its data when relevant, ' +
+  'but that is a bonus feature, not your whole personality. Respond naturally and conversationally, at whatever ' +
+  'length actually fits the question — brief for simple things, more thorough when it\'s warranted.\n\n' +
+  'The one place to be careful: if asked for a specific LIVE number this dashboard tracks (a stock price, crypto ' +
+  'price, quake magnitude, currency rate, weather reading, etc.), only state a figure if it actually appears in ' +
+  'the "Live dashboard data" block below — say "I don\'t have that in the current live feed" rather than guess. ' +
+  'That\'s it — everything else, answer like the full assistant you are.\n\n' +
+  (context ? `Live dashboard data (only source of truth for THIS dashboard's own numbers): ${JSON.stringify(context).slice(0, 2000)}` : 'No live dashboard data was passed for this question.');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,67 +59,55 @@ module.exports = async (req, res) => {
     return res.status(429).json({ error: 'Too many requests — slow down a moment.' });
   }
 
-  if (!process.env.GROQ_API_KEY) {
-    return res.status(500).json({ error: "Server is missing GROQ_API_KEY. Set it in your host's environment variables." });
-  }
-
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-  const { message, context } = body || {};
+  const { message, context, provider } = body || {};
 
   if (!message || typeof message !== 'string' || message.length > 500) {
     return res.status(400).json({ error: 'Send a "message" string under 500 characters.' });
   }
-  // Basic input sanitization: strip control characters and null bytes before
-  // this ever reaches the model or gets logged anywhere.
   const cleanMessage = message.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
   if (!cleanMessage) {
     return res.status(400).json({ error: 'Message was empty after cleanup.' });
   }
 
+  if (!process.env.OPENROUTER_API_KEY) {
+    return res.status(500).json({ error: "Server is missing OPENROUTER_API_KEY. Set it in your host's environment variables." });
+  }
+
+  const chosen = MODELS[provider] || MODELS[DEFAULT_MODEL_KEY];
+
   try {
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        // OpenRouter asks for these two for its free-tier attribution — not
+        // required to be your real deployed URL, just good practice to set.
+        'HTTP-Referer': 'https://observatory-dashboard.vercel.app',
+        'X-Title': 'Observatory',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: chosen.model,
+        ...(chosen.provider ? { provider: chosen.provider } : {}),
         messages: [
-          {
-            role: 'system',
-            content:
-              'You are OPERATOR, the AI assistant embedded in a live mission-control dashboard called Observatory. ' +
-              'Answer briefly — 2 to 4 sentences, calm and precise, no fluff.\n\n' +
-              'GROUNDING RULE — this is the most important instruction you have: ' +
-              'Only state a metric, price, stock value, quake magnitude, or news item if it appears in the ' +
-              '"Live dashboard data" block below. If the data needed to answer isn\'t present there, say so ' +
-              'explicitly — e.g. "I don\'t have that in the current live feed." Never invent, estimate, or guess ' +
-              'a number you were not given. Do not average, extrapolate, or "fill in" a plausible-sounding figure ' +
-              'for a stock, index, price, or statistic that isn\'t in the data block — an honest "not available" ' +
-              'is always correct; a fabricated number never is.\n\n' +
-              (context ? `Live dashboard data (only source of truth for numbers): ${JSON.stringify(context).slice(0, 2000)}` : 'No live dashboard data was passed for this question — decline to state any specific numbers.'),
-          },
+          { role: 'system', content: SYSTEM_PROMPT(context) },
           { role: 'user', content: cleanMessage },
         ],
-        max_tokens: 300,
-        // Low temperature on purpose: this bot reports live data, so we want
-        // the most literal/predictable output, not creative variation. High
-        // temperature is what causes confident-sounding invented numbers —
-        // exactly what the grounding rule above is trying to prevent.
-        temperature: 0.2,
+        max_tokens: 500,
+        temperature: 0.5,
       }),
     });
 
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
-      return res.status(502).json({ error: 'AI provider error', detail: errText.slice(0, 300) });
+    if (!r.ok) {
+      const t = await r.text();
+      return res.status(502).json({ error: 'AI provider error', detail: t.slice(0, 300) });
     }
-    const data = await groqRes.json();
-    const reply = data.choices?.[0]?.message?.content?.trim() || "I couldn't generate a reply — try rephrasing.";
-    return res.status(200).json({ reply });
+    const d = await r.json();
+    const reply = d.choices?.[0]?.message?.content?.trim() || "I couldn't generate a reply — try rephrasing.";
+    return res.status(200).json({ reply, model: chosen.model });
   } catch (e) {
-    return res.status(500).json({ error: 'Request to AI provider failed.' });
+    return res.status(502).json({ error: 'AI provider error', detail: e.message });
   }
 };
