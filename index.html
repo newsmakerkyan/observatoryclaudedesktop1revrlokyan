@@ -320,6 +320,7 @@
 
   /* ---------- FINANCIAL DASHBOARD ---------- */
   .fin-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 280px)); gap:14px; align-items:start; justify-content:start;}
+  .fin-stack{display:flex; flex-direction:column; gap:14px;}
   .atmos-tight .row{padding:5px 0;}
 
   /* ---------- FESTIVALS ---------- */
@@ -463,40 +464,42 @@
 <div class="wide" id="sec-finance">
   <div class="section-head">Global Financial Dashboard <span class="sub" id="finUpdated">stocks · metals · currency · crypto</span></div>
   <div class="fin-grid">
-    <div class="fin-panel">
-      <h3>Major Companies</h3>
-      <div id="stocksList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+    <div class="fin-stack">
+      <div class="fin-panel">
+        <h3>Major Companies</h3>
+        <div id="stocksList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+      </div>
+      <div class="fin-panel">
+        <h3>Shares</h3>
+        <div id="sharesList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+      </div>
     </div>
-    <div class="fin-panel">
-      <h3>Major Indices <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
-      <div id="indicesList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+    <div class="fin-stack">
+      <div class="fin-panel">
+        <h3>Major Indices <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
+        <div id="indicesList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+      </div>
+      <div class="fin-panel">
+        <h3>Bonds <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
+        <div id="bondsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+      </div>
     </div>
-    <div class="fin-panel">
-      <h3>Metals</h3>
-      <div class="fin-metals" id="metalsList">
-        <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
-        <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
+    <div class="fin-stack">
+      <div class="fin-panel">
+        <h3>Metals</h3>
+        <div class="fin-metals" id="metalsList">
+          <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
+          <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
+        </div>
+      </div>
+      <div class="fin-panel">
+        <h3>Market News</h3>
+        <div id="finNewsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
       </div>
     </div>
     <div class="fin-panel" id="sec-finance-crypto">
       <h3>Crypto Market</h3>
       <div id="cryptoFinList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
-    </div>
-    <div class="fin-panel">
-      <h3>Market News</h3>
-      <div id="finNewsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
-    </div>
-    <div class="fin-panel">
-      <h3>Shares</h3>
-      <div id="sharesList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
-    </div>
-    <div class="fin-panel">
-      <h3>Bonds <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
-      <div id="bondsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
-    </div>
-    <div class="fin-panel">
-      <h3>Mutual Funds</h3>
-      <div id="fundsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
     </div>
   </div>
 
@@ -927,8 +930,8 @@ async function loadMarkets(){
 // everywhere else in this project).
 const CURRENCY_PAIRS = [
   'EUR','GBP','INR','JPY','CNY','AED','AUD','CAD','CHF','SGD',
-  'HKD','NZD','SEK','NOK','DKK','ZAR','BRL','MXN','RUB','KRW',
-  'TRY','THB','IDR','MYR','PHP','PLN','ILS','SAR','PKR','EGP',
+  'HKD','NZD','SEK','NOK','DKK','ZAR','BRL','MXN','KRW',
+  'TRY','THB','IDR','MYR','PHP','PLN','ILS','SAR',
 ];
 async function loadCurrencyAndMetals(){
   try{
@@ -966,11 +969,15 @@ const STOCK_LABELS = { AAPL:'Apple', MSFT:'Microsoft', GOOGL:'Google', AMZN:'Ama
 const INDEX_LABELS = { SPX:'S&P 500 (SPY)', DJI:'Dow Jones (DIA)', IXIC:'Nasdaq (QQQ)', FTSE:'FTSE 100 (FLGB)', GDAXI:'DAX (EWG)', FCHI:'CAC 40 (EWQ)', N225:'Nikkei 225 (EWJ)', HSI:'Hang Seng (EWH)', SHCOMP:'Shanghai Comp. (ASHR)' };
 const SHARE_LABELS = { JPM:'JPMorgan', WMT:'Walmart', V:'Visa', JNJ:'Johnson & Johnson', 'BRK.B':'Berkshire Hathaway' };
 const BOND_LABELS = { US20Y:'20Y+ Treasury (TLT)', US10Y:'7-10Y Treasury (IEF)', TOTAL:'Total Bond Mkt (BND)', HIYIELD:'High-Yield Corp (HYG)' };
-const FUND_LABELS = { VFIAX:'Vanguard 500 (VFIAX)', FXAIX:'Fidelity 500 (FXAIX)', VTSAX:'Vanguard Total Mkt (VTSAX)' };
 function renderFinRows(containerId, labels, values, simulated){
   const rows = Object.entries(labels).map(([sym,name]) => {
+    // "— sim" means NO live backend at all (missing key) — a real, honest
+    // warning. A single symbol just not resolving (e.g. a mutual fund the
+    // free tier doesn't cover) is a totally different, unremarkable thing —
+    // it just shows a plain "—", same as everywhere else on this dashboard.
+    if(simulated) return `<div class="fin-row"><span class="sym">${name}</span><span class="px" style="color:var(--text-muted)">— sim</span></div>`;
     const v = values?.[sym];
-    if(!v || simulated) return `<div class="fin-row"><span class="sym">${name}</span><span class="px" style="color:var(--text-muted)">— sim</span></div>`;
+    if(!v) return `<div class="fin-row"><span class="sym">${name}</span><span class="px" style="color:var(--text-muted)">—</span></div>`;
     const cls = v.change >= 0 ? 'up' : 'down'; const arrow = v.change >= 0 ? '▲' : '▼';
     return `<div class="fin-row"><span class="sym">${name}</span><span class="px ${cls}">${v.price.toFixed(2)} ${arrow}${Math.abs(v.change).toFixed(1)}%</span></div>`;
   });
@@ -984,7 +991,6 @@ async function loadFinance(){
     renderFinRows('indicesList', INDEX_LABELS, d.indices, d.simulated);
     renderFinRows('sharesList', SHARE_LABELS, d.shares, d.simulated);
     renderFinRows('bondsList', BOND_LABELS, d.bonds, d.simulated);
-    renderFinRows('fundsList', FUND_LABELS, d.funds, d.simulated);
     applySearchFilter();
     // Be honest in the UI when this is placeholder data, not real quotes —
     // a convincing-looking fake number is worse than no number at all.
@@ -997,7 +1003,6 @@ async function loadFinance(){
     document.getElementById('indicesList').innerHTML = note;
     document.getElementById('sharesList').innerHTML = note;
     document.getElementById('bondsList').innerHTML = note;
-    document.getElementById('fundsList').innerHTML = note;
   }
 }
 
