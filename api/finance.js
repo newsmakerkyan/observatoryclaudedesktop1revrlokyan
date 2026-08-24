@@ -9,11 +9,6 @@
 // 500, TLT for long-term Treasuries) — genuine live data, just of the ETF's
 // share price. The frontend labels each with its ETF ticker so this is
 // never disguised as the underlying index/yield itself.
-//
-// Mutual Funds: most traditional mutual funds only publish one NAV per day
-// (not continuously quoted like a stock), and free tiers often don't cover
-// them at all. These are attempted the same way as everything else — any
-// that don't resolve just show "—" rather than breaking the panel.
 
 const STOCKS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX'];
 const SHARES = ['JPM', 'WMT', 'V', 'JNJ', 'BRK.B'];
@@ -27,7 +22,6 @@ const BOND_PROXIES = {
   TOTAL: 'BND',   // Total US Bond Market
   HIYIELD: 'HYG', // High-Yield Corporate
 };
-const MUTUAL_FUNDS = ['VFIAX', 'FXAIX', 'VTSAX'];
 
 let cache = { data: null, ts: 0 };
 const CACHE_MS = 15 * 60 * 1000;
@@ -44,7 +38,6 @@ function simulatedPayload(){
     indices: simulatedGroup(Object.keys(INDEX_PROXIES)),
     shares: simulatedGroup(SHARES),
     bonds: simulatedGroup(Object.keys(BOND_PROXIES)),
-    funds: simulatedGroup(MUTUAL_FUNDS),
     updated: new Date().toISOString(), simulated: true,
   };
 }
@@ -80,12 +73,11 @@ module.exports = async (req, res) => {
 
   try{
     const key = process.env.FINNHUB_API_KEY;
-    const [stocks, indices, shares, bonds, funds] = await Promise.all([
+    const [stocks, indices, shares, bonds] = await Promise.all([
       fetchGroup(STOCKS, s => s, key),
       fetchGroup(Object.keys(INDEX_PROXIES), id => INDEX_PROXIES[id], key),
       fetchGroup(SHARES, s => s, key),
       fetchGroup(Object.keys(BOND_PROXIES), id => BOND_PROXIES[id], key),
-      fetchGroup(MUTUAL_FUNDS, s => s, key),
     ]);
 
     const totalResolved = Object.keys(stocks).length + Object.keys(indices).length;
@@ -93,7 +85,7 @@ module.exports = async (req, res) => {
       return res.status(200).json(simulatedPayload());
     }
 
-    const payload = { stocks, indices, shares, bonds, funds, updated: new Date().toISOString() };
+    const payload = { stocks, indices, shares, bonds, updated: new Date().toISOString() };
     cache = { data: payload, ts: Date.now() };
     return res.status(200).json(payload);
   } catch (e) {
