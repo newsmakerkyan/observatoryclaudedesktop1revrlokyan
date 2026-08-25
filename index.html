@@ -1509,8 +1509,8 @@ async function handleSend(text){
     return;
   }
 
-  // Fallback: real AI via the secure backend — provider picked by the slider.
-  // Requires the matching key (GROQ_API_KEY or GEMINI_API_KEY) set server-side.
+  // Fallback: real AI via the secure backend — provider picked by the dropdown.
+  // Requires OPENROUTER_API_KEY set server-side.
   const thinkingEl = addMsg('thinking…', 'thinking', true);
   try{
     const res = await fetch('/api/chat', {
@@ -1524,7 +1524,15 @@ async function handleSend(text){
     });
     const data = await res.json();
     thinkingEl.remove();
-    if(!res.ok){ addMsg(data.error || 'AI backend error.', 'bot'); return; }
+    if(!res.ok){
+      // The backend captures the SPECIFIC reason from the AI provider (e.g.
+      // "401 Unauthorized" or "model not found") in data.detail — show that
+      // too instead of just the generic "AI provider error", so the exact
+      // problem is visible right here without digging through logs.
+      const full = data.detail ? `${data.error || 'AI backend error.'} — ${data.detail}` : (data.error || 'AI backend error.');
+      addMsg(full, 'bot');
+      return;
+    }
     addMsg(data.reply, 'bot');
   }catch(e){
     thinkingEl.remove();
