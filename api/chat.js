@@ -9,14 +9,27 @@
 // through Groq's infrastructure via the `provider.order` field — so you
 // still get Groq's speed, just through the single unified key.
 
+// IMPORTANT — OpenRouter's free-tier lineup rotates, sometimes with no
+// warning: as of writing, DeepSeek, Gemini, and Mistral's *:free variants
+// specifically have all gone paid-only (confirmed August 2026), even though
+// they're commonly referenced as free elsewhere. Hardcoding specific free
+// slugs is inherently fragile for this reason. "auto" uses OpenRouter's own
+// openrouter/free router, which always picks from whatever's ACTUALLY free
+// right now — this is OpenRouter's own recommended fix for exactly this
+// problem, and it's the safe default. The 5 named models are kept below
+// exactly as requested, but any of them can start returning a 404 "no
+// longer free" error at any time if that provider's free slot rotates out —
+// that's an OpenRouter-side change, not a bug here. If a named one starts
+// failing, switch to "Auto" or pick a different one from the list.
 const MODELS = {
+  'auto':        { model: 'openrouter/free' },
   'groq-llama':  { model: 'meta-llama/llama-3.3-70b-instruct:free', provider: { order: ['Groq'], allow_fallbacks: true } },
   'deepseek-r1': { model: 'deepseek/deepseek-r1:free' },
   'qwen-coder':  { model: 'qwen/qwen-2.5-coder-32b-instruct:free' },
   'gemini-flash':{ model: 'google/gemini-2.5-flash:free' },
   'mistral-7b':  { model: 'mistralai/mistral-7b-instruct:free' },
 };
-const DEFAULT_MODEL_KEY = 'gemini-flash';
+const DEFAULT_MODEL_KEY = 'auto';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 20;
