@@ -52,6 +52,21 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // GET is not how the chatbot actually talks to this endpoint (it needs
+  // POST), but visiting /api/chat directly in a browser is a GET request —
+  // so instead of a useless "POST only" error, answer with a real status
+  // check. This is the SAME "just visit the URL" diagnostic trick that
+  // already works for /api/currency, /api/news, and /api/finance.
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      status: 'ok — this endpoint is reachable',
+      openrouter_key_configured: Boolean(process.env.OPENROUTER_API_KEY),
+      hint: process.env.OPENROUTER_API_KEY
+        ? 'Key is set. If chat still fails, the issue is likely the OpenRouter account itself (invalid key, out of credits, or the specific free model is temporarily unavailable) — check openrouter.ai/activity for the real error.'
+        : 'OPENROUTER_API_KEY is NOT set in this deployment. Add it in Vercel → Settings → Environment Variables, then redeploy.',
+    });
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0] || req.socket?.remoteAddress || 'unknown';
