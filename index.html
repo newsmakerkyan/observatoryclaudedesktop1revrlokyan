@@ -560,10 +560,11 @@
   <div class="ai-provider-toggle">
     <span class="ai-provider-label active" style="color:var(--text-muted); text-transform:none; letter-spacing:0;">AI:</span>
     <select id="aiModelPicker" class="ai-model-select">
-      <option value="gemini-flash">Gemini 2.5 Flash</option>
+      <option value="auto">Auto (recommended)</option>
       <option value="groq-llama">Llama 3.3 70B (Groq)</option>
-      <option value="deepseek-r1">DeepSeek R1</option>
       <option value="qwen-coder">Qwen 2.5 Coder 32B</option>
+      <option value="gemini-flash">Gemini 2.5 Flash</option>
+      <option value="deepseek-r1">DeepSeek R1</option>
       <option value="mistral-7b">Mistral 7B</option>
     </select>
     <span class="clear" id="chatClear" title="Clear saved chat history">🗑</span>
@@ -1465,7 +1466,7 @@ const chatLog = document.getElementById('chatLog');
 /* ---- AI model selection (persisted) ---- */
 // The value sent matches the key names in api/chat.js's MODELS object —
 // keep these two lists in sync if you ever add/remove a model.
-let aiProvider = localStorage.getItem('observatory_ai_provider') || 'gemini-flash';
+let aiProvider = localStorage.getItem('observatory_ai_provider') || 'auto';
 const picker = document.getElementById('aiModelPicker');
 picker.value = aiProvider;
 picker.addEventListener('change', e => {
