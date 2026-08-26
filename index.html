@@ -1555,7 +1555,7 @@ document.getElementById('chatClose').addEventListener('click', () => {
 document.getElementById('chatClear').addEventListener('click', () => {
   localStorage.removeItem(CHAT_HISTORY_KEY);
   chatLog.innerHTML = '';
-  addMsg("Chat history cleared. I'm a full AI chatbot — ask me anything, or check in on the ISS, quakes, markets, weather, whatever's on your mind.", 'bot');
+  addMsg("Chat history cleared. I'm a full AI chatbot — ask me anything, or check in on the ISS, quakes, markets, weather, whatever's on your mind.", 'bot', true);
 });
 
 // Restore saved history on load, or show the greeting if there's nothing saved.
@@ -1563,7 +1563,7 @@ const savedHistory = loadSavedHistory();
 if(savedHistory.length){
   savedHistory.forEach(m => addMsg(m.text, m.who, true));
 } else {
-  addMsg("Operator online — I'm a full AI chatbot, ask me anything. I can also check in on the ISS, quakes, markets, weather, or whatever's live on this dashboard.", 'bot');
+  addMsg("Operator online — I'm a full AI chatbot, ask me anything. I can also check in on the ISS, quakes, markets, weather, or whatever's live on this dashboard.", 'bot', true);
 }
 
 /* ================= BOOT ================= */
