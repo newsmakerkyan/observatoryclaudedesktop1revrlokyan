@@ -10,24 +10,33 @@
 // still get Groq's speed, just through the single unified key.
 
 // IMPORTANT — OpenRouter's free-tier lineup rotates, sometimes with no
-// warning: as of writing, DeepSeek, Gemini, and Mistral's *:free variants
-// specifically have all gone paid-only (confirmed August 2026), even though
-// they're commonly referenced as free elsewhere. Hardcoding specific free
-// slugs is inherently fragile for this reason. "auto" uses OpenRouter's own
-// openrouter/free router, which always picks from whatever's ACTUALLY free
-// right now — this is OpenRouter's own recommended fix for exactly this
-// problem, and it's the safe default. The 5 named models are kept below
-// exactly as requested, but any of them can start returning a 404 "no
-// longer free" error at any time if that provider's free slot rotates out —
-// that's an OpenRouter-side change, not a bug here. If a named one starts
-// failing, switch to "Auto" or pick a different one from the list.
+// warning: as of writing, ALL FIVE named models below have been observed
+// returning "no longer free" 404s at various points, including on the same
+// account within minutes of each other. Two fixes applied here:
+//   1. Every request sends a `models` array (OpenRouter's documented
+//      fallback mechanism), not a single `model` string — OpenRouter tries
+//      each candidate in order, server-side, in ONE request, until one
+//      actually responds. This is much more resilient than either a single
+//      hardcoded slug OR the "openrouter/free" router slug (which, despite
+//      being OpenRouter's own advertised fix, was observed failing
+//      repeatedly in testing here too).
+//   2. Picking a specific named model still tries that one FIRST, but the
+//      other four are included as automatic fallbacks — so a request only
+//      fails if every single one of the five is down at the same moment.
+const FREE_CANDIDATES = [
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen-2.5-coder-32b-instruct:free',
+  'google/gemini-2.5-flash:free',
+  'deepseek/deepseek-r1:free',
+  'mistralai/mistral-7b-instruct:free',
+];
 const MODELS = {
-  'auto':        { model: 'openrouter/free' },
-  'groq-llama':  { model: 'meta-llama/llama-3.3-70b-instruct:free', provider: { order: ['Groq'], allow_fallbacks: true } },
-  'deepseek-r1': { model: 'deepseek/deepseek-r1:free' },
-  'qwen-coder':  { model: 'qwen/qwen-2.5-coder-32b-instruct:free' },
-  'gemini-flash':{ model: 'google/gemini-2.5-flash:free' },
-  'mistral-7b':  { model: 'mistralai/mistral-7b-instruct:free' },
+  'auto':        { models: FREE_CANDIDATES },
+  'groq-llama':  { models: ['meta-llama/llama-3.3-70b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'meta-llama/llama-3.3-70b-instruct:free')], provider: { order: ['Groq'], allow_fallbacks: true } },
+  'deepseek-r1': { models: ['deepseek/deepseek-r1:free', ...FREE_CANDIDATES.filter(m => m !== 'deepseek/deepseek-r1:free')] },
+  'qwen-coder':  { models: ['qwen/qwen-2.5-coder-32b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'qwen/qwen-2.5-coder-32b-instruct:free')] },
+  'gemini-flash':{ models: ['google/gemini-2.5-flash:free', ...FREE_CANDIDATES.filter(m => m !== 'google/gemini-2.5-flash:free')] },
+  'mistral-7b':  { models: ['mistralai/mistral-7b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'mistralai/mistral-7b-instruct:free')] },
 };
 const DEFAULT_MODEL_KEY = 'auto';
 
@@ -54,6 +63,10 @@ const SYSTEM_PROMPT = (context) =>
   'also happen to be embedded in a live dashboard called Observatory, so you can reference its data when relevant, ' +
   'but that is a bonus feature, not your whole personality. Respond naturally and conversationally, at whatever ' +
   'length actually fits the question — brief for simple things, more thorough when it\'s warranted.\n\n' +
+  'PERSONALITY MATTERS — this applies no matter which underlying model is answering: never respond like a flat, ' +
+  'robotic data-lookup tool, even for simple factual questions. Have some warmth and personality — a bit of wit, ' +
+  'genuine engagement, a real voice — the way a person would want a smart friend to answer, not a search engine ' +
+  'reading out a fact. This matters just as much as being correct.\n\n' +
   'The one place to be careful: if asked for a specific LIVE number this dashboard tracks (a stock price, crypto ' +
   'price, quake magnitude, currency rate, weather reading, etc.), only state a figure if it actually appears in ' +
   'the "Live dashboard data" block below — say "I don\'t have that in the current live feed" rather than guess. ' +
@@ -117,7 +130,7 @@ module.exports = async (req, res) => {
         'X-Title': 'Observatory',
       },
       body: JSON.stringify({
-        model: chosen.model,
+        models: chosen.models,
         ...(chosen.provider ? { provider: chosen.provider } : {}),
         messages: [
           { role: 'system', content: SYSTEM_PROMPT(context) },
@@ -134,7 +147,9 @@ module.exports = async (req, res) => {
     }
     const d = await r.json();
     const reply = d.choices?.[0]?.message?.content?.trim() || "I couldn't generate a reply — try rephrasing.";
-    return res.status(200).json({ reply, model: chosen.model });
+    // d.model reports which one of the fallback candidates actually
+    // responded — useful to know, since it can differ from the first choice.
+    return res.status(200).json({ reply, model: d.model || 'unknown' });
   } catch (e) {
     return res.status(502).json({ error: 'AI provider error', detail: e.message });
   }
