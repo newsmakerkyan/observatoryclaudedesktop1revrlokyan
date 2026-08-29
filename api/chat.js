@@ -20,9 +20,15 @@
 //      hardcoded slug OR the "openrouter/free" router slug (which, despite
 //      being OpenRouter's own advertised fix, was observed failing
 //      repeatedly in testing here too).
-//   2. Picking a specific named model still tries that one FIRST, but the
-//      other four are included as automatic fallbacks — so a request only
-//      fails if every single one of the five is down at the same moment.
+//   2. Picking a specific named model still tries that one FIRST, but up to
+//      two others are included as automatic fallbacks — so a request only
+//      fails if all three tried candidates are down at the same moment.
+//
+// NOTE: OpenRouter caps the `models` fallback array at 3 entries per
+// request (send more than 3 and it responds with a 400 "'models' array
+// must have 3 items or fewer"). With 5 free candidates total, every array
+// below is deliberately trimmed to 3 with .slice(0, 3) — do not remove
+// that, and do not add more than 2 extra candidates to any entry below.
 const FREE_CANDIDATES = [
   'meta-llama/llama-3.3-70b-instruct:free',
   'qwen/qwen-2.5-coder-32b-instruct:free',
@@ -31,12 +37,12 @@ const FREE_CANDIDATES = [
   'mistralai/mistral-7b-instruct:free',
 ];
 const MODELS = {
-  'auto':        { models: FREE_CANDIDATES },
-  'groq-llama':  { models: ['meta-llama/llama-3.3-70b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'meta-llama/llama-3.3-70b-instruct:free')], provider: { order: ['Groq'], allow_fallbacks: true } },
-  'deepseek-r1': { models: ['deepseek/deepseek-r1:free', ...FREE_CANDIDATES.filter(m => m !== 'deepseek/deepseek-r1:free')] },
-  'qwen-coder':  { models: ['qwen/qwen-2.5-coder-32b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'qwen/qwen-2.5-coder-32b-instruct:free')] },
-  'gemini-flash':{ models: ['google/gemini-2.5-flash:free', ...FREE_CANDIDATES.filter(m => m !== 'google/gemini-2.5-flash:free')] },
-  'mistral-7b':  { models: ['mistralai/mistral-7b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'mistralai/mistral-7b-instruct:free')] },
+  'auto':        { models: FREE_CANDIDATES.slice(0, 3) },
+  'groq-llama':  { models: ['meta-llama/llama-3.3-70b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'meta-llama/llama-3.3-70b-instruct:free')].slice(0, 3), provider: { order: ['Groq'], allow_fallbacks: true } },
+  'deepseek-r1': { models: ['deepseek/deepseek-r1:free', ...FREE_CANDIDATES.filter(m => m !== 'deepseek/deepseek-r1:free')].slice(0, 3) },
+  'qwen-coder':  { models: ['qwen/qwen-2.5-coder-32b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'qwen/qwen-2.5-coder-32b-instruct:free')].slice(0, 3) },
+  'gemini-flash':{ models: ['google/gemini-2.5-flash:free', ...FREE_CANDIDATES.filter(m => m !== 'google/gemini-2.5-flash:free')].slice(0, 3) },
+  'mistral-7b':  { models: ['mistralai/mistral-7b-instruct:free', ...FREE_CANDIDATES.filter(m => m !== 'mistralai/mistral-7b-instruct:free')].slice(0, 3) },
 };
 const DEFAULT_MODEL_KEY = 'auto';
 
