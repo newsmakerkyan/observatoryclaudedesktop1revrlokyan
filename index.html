@@ -1559,7 +1559,10 @@ document.getElementById('chatClear').addEventListener('click', () => {
 });
 
 // Restore saved history on load, or show the greeting if there's nothing saved.
-const savedHistory = loadSavedHistory();
+// Filter out any stray one-off system messages (like "Chat history cleared")
+// that may have gotten saved by an older version of this code — prevents
+// a single bad localStorage entry from replaying forever.
+const savedHistory = loadSavedHistory().filter(m => !/^(Chat history cleared|Operator online)/.test(m.text));
 if(savedHistory.length){
   savedHistory.forEach(m => addMsg(m.text, m.who, true));
 } else {
