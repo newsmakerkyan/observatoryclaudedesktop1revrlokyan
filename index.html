@@ -14,7 +14,7 @@
      of waiting on this stylesheet; falls back to a normal <link> if JS is off. -->
 <link rel="preload" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
-<script src="https://unpkg.com/globe.gl"></script>
+<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.34.5/dist/globe.gl.min.js"></script>
 <style>
   :root{
     --void:#050907;
@@ -249,8 +249,9 @@
     font-family:var(--mono); font-size:12px; padding:7px 10px;
   }
   .wx-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px; min-height:180px;}
-  .wx-secondary{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;}
-  @media(max-width:700px){ .wx-secondary{grid-template-columns:1fr;} }
+  .wx-secondary{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:14px;}
+  @media(max-width:900px){ .wx-secondary{grid-template-columns:1fr 1fr;} }
+  @media(max-width:520px){ .wx-secondary{grid-template-columns:1fr;} }
   .wx-now{
     grid-column:1 / -1; display:flex; gap:24px; flex-wrap:wrap; align-items:center;
     padding:16px; border:1px solid var(--panel-edge); background:var(--panel);
@@ -458,7 +459,7 @@
   <div class="wx-grid" id="wxGrid">
     <div class="wx-now"><span class="loading">ACQUIRING SIGNAL…</span></div>
   </div>
-  <div class="wx-secondary" style="grid-template-columns:1fr 1fr 1fr;">
+  <div class="wx-secondary">
     <div class="fin-panel">
       <h3>Sunlight <span id="sunlightCity" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
       <div id="sunlightData" class="atmos-tight"><div class="loading">ACQUIRING SIGNAL…</div></div>
@@ -509,6 +510,10 @@
           <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
           <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
         </div>
+      </div>
+      <div class="fin-panel">
+        <h3>Energy <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
+        <div id="energyList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
       </div>
       <div class="fin-panel">
         <h3>Market News</h3>
@@ -652,35 +657,49 @@ initClockGrid();
 setInterval(tickClock, 1000); tickClock();
 
 /* ================= GLOBE ================= */
-const world = Globe()
-  (document.getElementById('globeViz'))
-  .backgroundColor('rgba(0,0,0,0)')
-  .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
-  .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
-  .showAtmosphere(true)
-  .atmosphereColor('#39ff88')
-  .atmosphereAltitude(0.18)
-  .pointsData([])
-  .pointLat('lat').pointLng('lng')
-  .pointColor(d => d.color).pointAltitude(0.006).pointRadius(0.35)
-  .ringsData([])
-  .ringLat('lat').ringLng('lng')
-  .ringColor(() => t => `rgba(57,255,136,${1-t})`)
-  .ringMaxRadius('maxR').ringPropagationSpeed('speed').ringRepeatPeriod('repeat')
-  .htmlElementsData([])
-  .htmlLat('lat').htmlLng('lng')
-  .htmlElement(d => {
-    const el = document.createElement('div');
-    el.innerHTML = '✦';
-    el.style.color = '#ffb020';
-    el.style.fontSize = '20px';
-    el.style.textShadow = '0 0 8px #ffb020';
-    el.style.transform = 'translate(-50%,-50%)';
-    return el;
-  });
-
-world.controls().autoRotate = true;
-world.controls().autoRotateSpeed = 0.35;
+// Wrapped in try/catch: if globe.gl or its CDN ever fails to load again, the
+// REST of the dashboard (quakes, ISS, weather, chat, everything) must keep
+// working — a Proxy stub absorbs any calls loadQuakes()/loadISS() make on
+// `world` later (e.g. world.ringsData(...).pointsData(...)) as harmless
+// no-ops instead of throwing and killing the whole script.
+let world;
+try {
+  world = Globe()
+    (document.getElementById('globeViz'))
+    .backgroundColor('rgba(0,0,0,0)')
+    .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe@2.31.1/example/img/earth-dark.jpg')
+    .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe@2.31.1/example/img/earth-topology.png')
+    .showAtmosphere(true)
+    .atmosphereColor('#39ff88')
+    .atmosphereAltitude(0.18)
+    .pointsData([])
+    .pointLat('lat').pointLng('lng')
+    .pointColor(d => d.color).pointAltitude(0.006).pointRadius(0.35)
+    .ringsData([])
+    .ringLat('lat').ringLng('lng')
+    .ringColor(() => t => `rgba(57,255,136,${1-t})`)
+    .ringMaxRadius('maxR').ringPropagationSpeed('speed').ringRepeatPeriod('repeat')
+    .htmlElementsData([])
+    .htmlLat('lat').htmlLng('lng')
+    .htmlElement(d => {
+      const el = document.createElement('div');
+      el.innerHTML = '✦';
+      el.style.color = '#ffb020';
+      el.style.fontSize = '20px';
+      el.style.textShadow = '0 0 8px #ffb020';
+      el.style.transform = 'translate(-50%,-50%)';
+      return el;
+    });
+  world.controls().autoRotate = true;
+  world.controls().autoRotateSpeed = 0.35;
+} catch (e) {
+  console.warn('Globe.gl failed to load — dashboard continues without the 3D globe visual.', e);
+  const noop = () => stub;
+  const stub = new Proxy({}, { get: () => noop });
+  world = stub;
+  const caption = document.querySelector('.globe-caption');
+  if (caption) caption.textContent = '⚠ Globe visual unavailable — all data below still live.';
+}
 
 /* ================= SHARED LIVE DATA (used by clock + chatbot) ================= */
 const DATA = { quakes: [], iss: null, markets: null, atmos: [], news: [], countries: [], currency: null, finance: null, festivals: [] };
@@ -1047,7 +1066,8 @@ const BOND_LABELS = { US20Y:'20Y+ Treasury (TLT)', US10Y:'7-10Y Treasury (IEF)',
 // Popular low-cost index funds (Vanguard/Schwab ETFs) — distinct from the
 // Major Indices panel above (which tracks market benchmarks like the S&P
 // 500 itself via SPY); these are the actual FUNDS people invest in.
-const INDEXFUND_LABELS = { VOO:'Vanguard S&P 500 (VOO)', VTI:'Vanguard Total Stock Mkt (VTI)', VXUS:'Vanguard Total Int\u2019l (VXUS)', VUG:'Vanguard Growth (VUG)', VYM:'Vanguard High Div. Yield (VYM)', SCHD:'Schwab US Div. Equity (SCHD)' };
+const INDEXFUND_LABELS = { VOO:'S&P 500 (VOO)', VTI:'Total Market (VTI)', VXUS:'Int\u2019l (VXUS)', VUG:'Growth (VUG)', VYM:'Div. Yield (VYM)', SCHD:'Div. Equity (SCHD)' };
+const ENERGY_LABELS = { WTI:'WTI Crude (USO)', BRENT:'Brent Crude (BNO)', NATGAS:'Natural Gas (UNG)' };
 function renderFinRows(containerId, labels, values, simulated){
   const rows = Object.entries(labels).map(([sym,name]) => {
     // "— sim" means NO live backend at all (missing key) — a real, honest
@@ -1071,6 +1091,7 @@ async function loadFinance(){
     renderFinRows('sharesList', SHARE_LABELS, d.shares, d.simulated);
     renderFinRows('bondsList', BOND_LABELS, d.bonds, d.simulated);
     renderFinRows('indexFundsList', INDEXFUND_LABELS, d.indexFunds, d.simulated);
+    renderFinRows('energyList', ENERGY_LABELS, d.energy, d.simulated);
     applySearchFilter();
     // Be honest in the UI when this is placeholder data, not real quotes —
     // a convincing-looking fake number is worse than no number at all.
@@ -1084,6 +1105,7 @@ async function loadFinance(){
     document.getElementById('sharesList').innerHTML = note;
     document.getElementById('bondsList').innerHTML = note;
     document.getElementById('indexFundsList').innerHTML = note;
+    document.getElementById('energyList').innerHTML = note;
   }
 }
 
@@ -1656,8 +1678,20 @@ function addImageMsg(base64, prompt, skipSave){
   img.alt = prompt;
   const label = document.createElement('div');
   label.textContent = `Generated: "${prompt}"`;
+  // Right-click "copy image" on a data: URI is unreliable across browsers,
+  // so give a real download button instead — always works everywhere.
+  const dl = document.createElement('button');
+  dl.textContent = '⬇ Download image';
+  dl.style.cssText = 'background:transparent;border:1px solid var(--phosphor-dim);color:var(--phosphor);font-family:var(--mono);font-size:10px;padding:3px 8px;cursor:pointer;margin-top:6px;';
+  dl.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = `data:image/jpeg;base64,${base64}`;
+    a.download = `${prompt.slice(0,40).replace(/[^a-z0-9]+/gi,'-')}.jpg`;
+    a.click();
+  });
   div.appendChild(label);
   div.appendChild(img);
+  div.appendChild(dl);
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
   if(!skipSave) saveToHistory(`[image] ${prompt}`, 'bot');
