@@ -26,11 +26,6 @@ const BOND_PROXIES = {
   HIYIELD: 'HYG', // High-Yield Corporate
 };
 const INDEX_FUNDS = ['VOO', 'VTI', 'VXUS', 'VUG', 'VYM', 'SCHD'];
-const ENERGY_PROXIES = {
-  WTI: 'USO', // WTI Crude Oil, via United States Oil Fund ETF
-  BRENT: 'BNO', // Brent Crude, via United States Brent Oil Fund ETF
-  NATGAS: 'UNG', // Natural Gas, via United States Natural Gas Fund ETF
-};
 
 let cache = { data: null, ts: 0 };
 const CACHE_MS = 15 * 60 * 1000;
@@ -48,7 +43,6 @@ function simulatedPayload(){
     shares: simulatedGroup(SHARES),
     bonds: simulatedGroup(Object.keys(BOND_PROXIES)),
     indexFunds: simulatedGroup(INDEX_FUNDS),
-    energy: simulatedGroup(Object.keys(ENERGY_PROXIES)),
     updated: new Date().toISOString(), simulated: true,
   };
 }
@@ -84,13 +78,12 @@ module.exports = async (req, res) => {
 
   try{
     const key = process.env.FINNHUB_API_KEY;
-    const [stocks, indices, shares, bonds, indexFunds, energy] = await Promise.all([
+    const [stocks, indices, shares, bonds, indexFunds] = await Promise.all([
       fetchGroup(STOCKS, s => s, key),
       fetchGroup(Object.keys(INDEX_PROXIES), id => INDEX_PROXIES[id], key),
       fetchGroup(SHARES, s => s, key),
       fetchGroup(Object.keys(BOND_PROXIES), id => BOND_PROXIES[id], key),
       fetchGroup(INDEX_FUNDS, s => s, key),
-      fetchGroup(Object.keys(ENERGY_PROXIES), id => ENERGY_PROXIES[id], key),
     ]);
 
     const totalResolved = Object.keys(stocks).length + Object.keys(indices).length;
@@ -98,7 +91,7 @@ module.exports = async (req, res) => {
       return res.status(200).json(simulatedPayload());
     }
 
-    const payload = { stocks, indices, shares, bonds, indexFunds, energy, updated: new Date().toISOString() };
+    const payload = { stocks, indices, shares, bonds, indexFunds, updated: new Date().toISOString() };
     cache = { data: payload, ts: Date.now() };
     return res.status(200).json(payload);
   } catch (e) {
