@@ -309,6 +309,33 @@
   }
   .nav-dropdown select option{background:var(--panel); color:var(--text);}
 
+  /* ---------- SECTION FINDER (GitHub-style search modal) ---------- */
+  #navFinderTrigger{cursor:pointer;}
+  #navFinderOverlay{
+    position:fixed; inset:0; z-index:60; background:rgba(0,0,0,0.6);
+    display:none; align-items:flex-start; justify-content:center; padding-top:12vh;
+  }
+  #navFinderOverlay.open{display:flex;}
+  #navFinderBox{
+    width:90%; max-width:480px; background:var(--panel); border:1px solid var(--phosphor-dim);
+    box-shadow:0 0 40px rgba(57,255,136,.2); font-family:var(--mono);
+  }
+  #navFinderInput{
+    width:100%; background:transparent; border:none; outline:none; color:var(--text);
+    font-family:var(--mono); font-size:14px; padding:14px 16px; border-bottom:1px solid var(--panel-edge);
+  }
+  #navFinderInput::placeholder{color:var(--text-muted);}
+  #navFinderResults{max-height:340px; overflow-y:auto;}
+  .finder-item{
+    padding:10px 16px; font-size:12.5px; color:var(--text); cursor:pointer;
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom:1px dashed var(--grid);
+  }
+  .finder-item:last-child{border-bottom:none;}
+  .finder-item:hover, .finder-item.active{background:var(--phosphor-faint); color:var(--phosphor);}
+  .finder-item .kbd{color:var(--text-muted); font-size:10px;}
+  .finder-empty{padding:16px; color:var(--text-muted); font-size:12px; text-align:center;}
+
   /* ---------- CONNECTION STATUS ---------- */
   .conn-status{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted);}
   .conn-status .dot{width:7px; height:7px; border-radius:50%; background:var(--phosphor); box-shadow:0 0 5px var(--phosphor);}
@@ -385,24 +412,19 @@
       <small>Live planetary feed // unclassified</small>
     </div>
   </div>
-  <div class="nav-dropdown">
-    <span class="icon">☰</span>
-    <select id="sectionNav">
-      <option value="">Jump to section…</option>
-      <option value="sec-seismic">Seismic Activity</option>
-      <option value="sec-iss">ISS Orbit Data</option>
-      <option value="sec-clocks">World Clocks</option>
-      <option value="sec-weather">Weather Analysis</option>
-      <option value="sec-finance">Financial Dashboard</option>
-      <option value="sec-finance-crypto">Crypto Market</option>
-      <option value="sec-news">Global News</option>
-      <option value="sec-festivals">Festivals &amp; Observances</option>
-      <option value="sec-almanac">World Almanac</option>
-      <option value="__chat">AI Chat (Operator)</option>
-    </select>
+  <div class="nav-dropdown" id="navFinderTrigger" role="button" tabindex="0">
+    <span class="icon">🔍</span>
+    <span style="color:var(--text-muted); flex:1;">Find section… <span style="opacity:.6;">(Ctrl+K)</span></span>
   </div>
   <div class="conn-status" id="connStatus"><span class="dot"></span><span id="connLabel">Online</span></div>
 </header>
+
+<div id="navFinderOverlay">
+  <div id="navFinderBox">
+    <input id="navFinderInput" type="text" placeholder="Search sections… (e.g. weather, crypto, news)" autocomplete="off">
+    <div id="navFinderResults"></div>
+  </div>
+</div>
 
 <main>
 <div class="grid">
@@ -415,8 +437,13 @@
     </div>
 
     <div class="panel">
-      <div class="panel-head">Markets <span class="n">USD</span></div>
-      <div class="panel-body" id="marketList"><div class="loading">ACQUIRING SIGNAL…</div></div>
+      <div class="panel-head">Metals <span class="n">USD/KG</span></div>
+      <div class="panel-body">
+        <div class="fin-metals" id="metalsList">
+          <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
+          <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -498,22 +525,11 @@
         <h3>Bonds <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
         <div id="bondsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
       </div>
-      <div class="fin-panel">
-        <h3>Index Funds</h3>
-        <div id="indexFundsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
-      </div>
     </div>
     <div class="fin-stack">
       <div class="fin-panel">
-        <h3>Metals</h3>
-        <div class="fin-metals" id="metalsList">
-          <div class="m"><div class="lbl">GOLD / KG</div><div class="val" id="goldPrice">--</div></div>
-          <div class="m"><div class="lbl">SILVER / KG</div><div class="val" id="silverPrice">--</div></div>
-        </div>
-      </div>
-      <div class="fin-panel">
-        <h3>Energy <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
-        <div id="energyList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+        <h3>Index Funds</h3>
+        <div id="indexFundsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
       </div>
       <div class="fin-panel">
         <h3>Market News</h3>
@@ -571,7 +587,7 @@
 <div class="wide" style="margin: 8px 0 24px;">
   <div class="panel">
     <div class="panel-body" style="font-family:var(--sans); font-size:13px; line-height:1.6; text-align:center;">
-      Built by Kyan Goel, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds. <hr>for any suggestions or queries email-newsislive@protonmail.com
+      Built by Kyan Goel, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds.<hr>for any suggestions and queries contact email-newsislive@protonmail.com
     </div>
   </div>
 </div>
@@ -586,13 +602,13 @@
       <option value="auto">Auto (recommended)</option>
       <option value="groq-gptoss120b">GPT-OSS 120B</option>
       <option value="groq-qwen36">Qwen 3.6 27B</option>
-      <option value="groq-llama4-mav">Llama 4 Maverick</option>
+      <option value="groq-gptoss20b">GPT-OSS 20B</option>
       <option value="cf-gemma">Gemma 4</option>
       <option value="cf-llama4scout">Llama 4 Scout</option>
       <option value="cf-gptoss120b">GPT-OSS 120B (Cloudflare)</option>
       <option value="cf-llama">Llama 3.3 70B</option>
-      <option value="cf-mistral">Mistral 7B</option>
-      <option value="cf-qwen">Qwen 1.5</option>
+      <option value="cf-mistral">Mistral Small 24B</option>
+      <option value="cf-qwen">Qwen 3 30B</option>
       <option value="cf-deepseek">DeepSeek R1</option>
     </select>
     <span class="clear" id="chatImageHint" title="Tip: ask to draw/generate an image, or paste a link">🖼️</span>
@@ -751,16 +767,88 @@ function stampUpdated(elId){
 // that call it after loading data don't need to be touched individually.
 function applySearchFilter(){ /* no-op — kept for compatibility with existing call sites */ }
 
-document.getElementById('sectionNav').addEventListener('change', e => {
-  const target = e.target.value;
-  if(!target) return;
-  if(target === '__chat'){
+/* ================= SECTION FINDER (GitHub-style Ctrl+K search) ================= */
+const FINDER_SECTIONS = [
+  { id: 'sec-seismic', label: 'Seismic Activity', keywords: 'quake earthquake' },
+  { id: 'sec-iss', label: 'ISS Orbit Data', keywords: 'space station satellite' },
+  { id: 'sec-clocks', label: 'World Clocks', keywords: 'time timezone' },
+  { id: 'sec-weather', label: 'Weather Analysis', keywords: 'forecast temperature aqi air quality' },
+  { id: 'sec-finance', label: 'Financial Dashboard', keywords: 'stocks shares indices bonds index funds metals' },
+  { id: 'sec-finance-crypto', label: 'Crypto Market', keywords: 'bitcoin btc eth crypto' },
+  { id: 'sec-news', label: 'Global News', keywords: 'headlines articles' },
+  { id: 'sec-festivals', label: 'Festivals & Observances', keywords: 'holidays' },
+  { id: 'sec-almanac', label: 'World Almanac', keywords: 'countries nations' },
+  { id: '__chat', label: 'AI Chat (Operator)', keywords: 'ai assistant bot' },
+];
+const finderOverlay = document.getElementById('navFinderOverlay');
+const finderInput = document.getElementById('navFinderInput');
+const finderResults = document.getElementById('navFinderResults');
+let finderActiveIndex = 0;
+
+function renderFinderResults(query){
+  const q = query.toLowerCase().trim();
+  const matches = FINDER_SECTIONS.filter(s =>
+    !q || s.label.toLowerCase().includes(q) || s.keywords.includes(q)
+  );
+  finderActiveIndex = 0;
+  if(!matches.length){
+    finderResults.innerHTML = '<div class="finder-empty">No matching section</div>';
+    return;
+  }
+  finderResults.innerHTML = matches.map((s, i) => `
+    <div class="finder-item ${i === 0 ? 'active' : ''}" data-id="${s.id}">
+      <span>${s.label}</span><span class="kbd">↵</span>
+    </div>
+  `).join('');
+  finderResults.querySelectorAll('.finder-item').forEach(el => {
+    el.addEventListener('click', () => goToSection(el.dataset.id));
+  });
+}
+function goToSection(id){
+  if(id === '__chat'){
     document.getElementById('chatPanel').classList.add('open');
   } else {
-    const el = document.getElementById(target);
+    const el = document.getElementById(id);
     if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  e.target.value = ''; // reset to placeholder so the same option can be picked again
+  closeFinder();
+}
+function openFinder(){
+  finderOverlay.classList.add('open');
+  finderInput.value = '';
+  renderFinderResults('');
+  setTimeout(() => finderInput.focus(), 10);
+}
+function closeFinder(){
+  finderOverlay.classList.remove('open');
+}
+document.getElementById('navFinderTrigger').addEventListener('click', openFinder);
+document.getElementById('navFinderTrigger').addEventListener('keydown', e => { if(e.key === 'Enter') openFinder(); });
+finderOverlay.addEventListener('click', e => { if(e.target === finderOverlay) closeFinder(); });
+finderInput.addEventListener('input', () => renderFinderResults(finderInput.value));
+finderInput.addEventListener('keydown', e => {
+  const items = finderResults.querySelectorAll('.finder-item');
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    finderActiveIndex = Math.min(finderActiveIndex + 1, items.length - 1);
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    finderActiveIndex = Math.max(finderActiveIndex - 1, 0);
+  } else if(e.key === 'Enter'){
+    if(items[finderActiveIndex]) goToSection(items[finderActiveIndex].dataset.id);
+    return;
+  } else if(e.key === 'Escape'){
+    closeFinder();
+    return;
+  } else return;
+  items.forEach((el, i) => el.classList.toggle('active', i === finderActiveIndex));
+});
+// Global Ctrl+K / Cmd+K shortcut, GitHub-style
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey || e.metaKey) && e.key === 'k'){
+    e.preventDefault();
+    openFinder();
+  }
 });
 
 /* ================= STATIC REFERENCE DATA ================= */
@@ -974,19 +1062,6 @@ async function loadMarkets(){
     const byId = {}; d.forEach(c => byId[c.id] = c);
     DATA.markets = byId;
 
-    // Compact panel (left column) — top 4, matches original layout
-    const compact = ['bitcoin','ethereum','solana','dogecoin'];
-    document.getElementById('marketList').innerHTML = compact.map(id => {
-      const c = byId[id]; if(!c) return '';
-      const chg = c.price_change_percentage_24h ?? 0;
-      const cls = chg >= 0 ? 'up' : 'down'; const arrow = chg >= 0 ? '▲' : '▼';
-      return `<div class="row">
-        <span class="tag">${c.symbol.toUpperCase()}</span>
-        <span class="val">$${c.current_price.toLocaleString(undefined,{maximumFractionDigits: c.current_price < 10 ? 4 : 0})}
-          <span class="${cls}">${arrow} ${Math.abs(chg).toFixed(1)}%</span></span>
-      </div>`;
-    }).join('');
-
     // Rich panel (Global Financial Dashboard) — price + 24h change + market cap + volume
     document.getElementById('cryptoFinList').innerHTML = d.map(c => {
       const chg = c.price_change_percentage_24h ?? 0;
@@ -1011,7 +1086,6 @@ async function loadMarkets(){
     // here would mean the shared server-side cap was hit — rare, but shown
     // honestly if it happens.
     const reason = e.message.includes('429') ? 'RATE LIMITED (server-side cap) — try again shortly' : `SIGNAL LOST (${e.message})`;
-    document.getElementById('marketList').innerHTML = `<div class="loading">${reason}</div>`;
     document.getElementById('cryptoFinList').innerHTML = `<div class="loading">${reason}</div>`;
   }
 }
@@ -1069,7 +1143,6 @@ const BOND_LABELS = { US20Y:'20Y+ Treasury (TLT)', US10Y:'7-10Y Treasury (IEF)',
 // Major Indices panel above (which tracks market benchmarks like the S&P
 // 500 itself via SPY); these are the actual FUNDS people invest in.
 const INDEXFUND_LABELS = { VOO:'S&P 500 (VOO)', VTI:'Total Market (VTI)', VXUS:'Int\u2019l (VXUS)', VUG:'Growth (VUG)', VYM:'Div. Yield (VYM)', SCHD:'Div. Equity (SCHD)' };
-const ENERGY_LABELS = { WTI:'WTI Crude (USO)', BRENT:'Brent Crude (BNO)', NATGAS:'Natural Gas (UNG)' };
 function renderFinRows(containerId, labels, values, simulated){
   const rows = Object.entries(labels).map(([sym,name]) => {
     // "— sim" means NO live backend at all (missing key) — a real, honest
@@ -1093,7 +1166,6 @@ async function loadFinance(){
     renderFinRows('sharesList', SHARE_LABELS, d.shares, d.simulated);
     renderFinRows('bondsList', BOND_LABELS, d.bonds, d.simulated);
     renderFinRows('indexFundsList', INDEXFUND_LABELS, d.indexFunds, d.simulated);
-    renderFinRows('energyList', ENERGY_LABELS, d.energy, d.simulated);
     applySearchFilter();
     // Be honest in the UI when this is placeholder data, not real quotes —
     // a convincing-looking fake number is worse than no number at all.
@@ -1107,7 +1179,6 @@ async function loadFinance(){
     document.getElementById('sharesList').innerHTML = note;
     document.getElementById('bondsList').innerHTML = note;
     document.getElementById('indexFundsList').innerHTML = note;
-    document.getElementById('energyList').innerHTML = note;
   }
 }
 
