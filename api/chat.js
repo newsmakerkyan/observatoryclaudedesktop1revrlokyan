@@ -75,6 +75,11 @@ const SYSTEM_PROMPT = (context, linkContent) =>
   'also generate images when asked (the system handles that separately) and read web pages when the person shares ' +
   'a link. You also happen to be embedded in a live dashboard called Observatory, so you can reference its data ' +
   'when relevant, but that is a bonus feature, not your whole personality.\n\n' +
+  'IMPORTANT — image generation: you personally CANNOT generate images. If you are being asked to respond, the ' +
+  'system already tried and failed to detect an image request, or they asked something else entirely. NEVER output ' +
+  'markdown image syntax like ![description](...) or pretend an image was created — that is always fake coming ' +
+  'from you. If it looks like they wanted an image, tell them plainly to try rephrasing as "draw/generate a picture ' +
+  'of X" instead of faking a result.\n\n' +
   'Default to giving thorough, complete answers with real detail, the way a knowledgeable person would actually ' +
   'explain something — not a one-line summary. Only stay brief for genuinely simple things; for anything involving ' +
   'explanation, opinion, how-to, or discussion, write a full, well-developed answer.\n\n' +
@@ -151,11 +156,17 @@ async function generateImage(env, prompt) {
 }
 
 // Detects "draw/generate/create an image of X" style requests.
-const IMAGE_TRIGGER = /^(draw|generate|create|make)\s+(me\s+)?(an?\s+)?(image|picture|photo|drawing|illustration)\s+(of|showing|depicting)?\s*/i;
+// Stem-based detection instead of a strict prefix regex — tolerates typos
+// like "generat" (missing the 'e') and catches the request anywhere in the
+// message, not just at the very start.
+const IMAGE_VERB_STEMS = /\b(draw|drew|generat|creat|mak|paint|illustrat|sketch)\w*/i;
+const IMAGE_NOUN_STEMS = /\b(imag|pictur|photo|drawing|art|illustration|painting|sketch)\w*/i;
 function extractImagePrompt(message) {
-  const m = message.match(IMAGE_TRIGGER);
-  if (!m) return null;
-  return message.slice(m[0].length).trim() || message;
+  if (!IMAGE_VERB_STEMS.test(message) || !IMAGE_NOUN_STEMS.test(message)) return null;
+  // Strip the leading trigger phrase if present, otherwise just use the
+  // whole message as the prompt — either way the subject comes through.
+  const stripped = message.replace(/^(draw|generat\w*|creat\w*|mak\w*|paint\w*|illustrat\w*|sketch\w*)\s+(me\s+)?(an?\s+)?(imag\w*|pictur\w*|photo\w*|drawing|art|illustration|painting|sketch\w*)\s*(of|showing|depicting)?\s*/i, '');
+  return stripped.trim() || message.trim();
 }
 
 async function callProvider(env, key, messages) {
