@@ -9,6 +9,9 @@
 // 500, TLT for long-term Treasuries) — genuine live data, just of the ETF's
 // share price. The frontend labels each with its ETF ticker so this is
 // never disguised as the underlying index/yield itself.
+//
+// Index Funds: these ARE the actual funds themselves (not proxies for
+// something else) — real ETF tickers people actually invest in.
 
 const STOCKS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX'];
 const SHARES = ['JPM', 'WMT', 'V', 'JNJ', 'BRK.B'];
@@ -22,6 +25,7 @@ const BOND_PROXIES = {
   TOTAL: 'BND',   // Total US Bond Market
   HIYIELD: 'HYG', // High-Yield Corporate
 };
+const INDEX_FUNDS = ['VOO', 'VTI', 'VXUS', 'VUG', 'VYM', 'SCHD'];
 
 let cache = { data: null, ts: 0 };
 const CACHE_MS = 15 * 60 * 1000;
@@ -38,6 +42,7 @@ function simulatedPayload(){
     indices: simulatedGroup(Object.keys(INDEX_PROXIES)),
     shares: simulatedGroup(SHARES),
     bonds: simulatedGroup(Object.keys(BOND_PROXIES)),
+    indexFunds: simulatedGroup(INDEX_FUNDS),
     updated: new Date().toISOString(), simulated: true,
   };
 }
@@ -73,11 +78,12 @@ module.exports = async (req, res) => {
 
   try{
     const key = process.env.FINNHUB_API_KEY;
-    const [stocks, indices, shares, bonds] = await Promise.all([
+    const [stocks, indices, shares, bonds, indexFunds] = await Promise.all([
       fetchGroup(STOCKS, s => s, key),
       fetchGroup(Object.keys(INDEX_PROXIES), id => INDEX_PROXIES[id], key),
       fetchGroup(SHARES, s => s, key),
       fetchGroup(Object.keys(BOND_PROXIES), id => BOND_PROXIES[id], key),
+      fetchGroup(INDEX_FUNDS, s => s, key),
     ]);
 
     const totalResolved = Object.keys(stocks).length + Object.keys(indices).length;
@@ -85,7 +91,7 @@ module.exports = async (req, res) => {
       return res.status(200).json(simulatedPayload());
     }
 
-    const payload = { stocks, indices, shares, bonds, updated: new Date().toISOString() };
+    const payload = { stocks, indices, shares, bonds, indexFunds, updated: new Date().toISOString() };
     cache = { data: payload, ts: Date.now() };
     return res.status(200).json(payload);
   } catch (e) {
