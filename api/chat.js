@@ -1,91 +1,34 @@
 // /api/chat.js — Vercel serverless function
-// Multi-provider AI chat: Groq, Google AI Studio (Gemini), Cloudflare Workers AI,
-// and OpenRouter, selectable via the `provider` field sent from the frontend.
+// Two providers only: Groq (fastest) and Cloudflare Workers AI.
+// OpenRouter was removed entirely — its free tier (50 requests/day) wasn't
+// reliable enough to be worth the added complexity of a third provider.
 //
-// ===== MODEL NOTES (verified against each provider's docs, 2026-09) =====
+// Also handles:
+//   - IMAGE GENERATION: via Cloudflare Workers AI's Flux model, triggered
+//     when the user's message looks like an image request.
+//   - LINK READING: if the user's message contains a URL, this fetches that
+//     page's text content server-side and feeds it to the model as context,
+//     so it can actually discuss what's on the page instead of guessing.
 //
-// GROQ — fastest, tried first in 'auto' mode.
-//   ⚠ llama-3.3-70b-versatile was deprecated 2026-08-16.
-//   ⚠ llama-4-scout-17b-16e-instruct was deprecated 2026-07-17.
-//   Both are DEAD — using Groq's own recommended replacements instead:
-//     openai/gpt-oss-120b   — best all-round quality/speed replacement
-//     qwen/qwen3.6-27b      — Groq's other recommended replacement
-//     meta-llama/llama-4-maverick-17b-128e-instruct — NOT in Groq's deprecation
-//       list as of this writing, so presumed still live — but Groq's free-tier
-//       catalog rotates without warning, so re-check console.groq.com/docs/models
-//       if this one ever errors.
-//
-// GOOGLE AI STUDIO — DROPPED. Google AI Studio requires the account holder
-//   be 13+ (enforced via Google Family Link on younger accounts), so this
-//   provider isn't usable here. Removed rather than left in half-broken.
-//
-// LIVE WEB SEARCH — OpenRouter supports appending ":online" to almost any
-//   model slug to have it run a real web search (via Exa) before answering,
-//   instead of only knowing what's in its training data or the dashboard's
-//   own live-data context. This is what makes answers behave like ChatGPT's
-//   web-browsing mode rather than a closed-book model. Uses a bit more of
-//   the ~50/day free-request budget per search, so it's offered as its own
-//   selectable option rather than forced on every message.
-//
-// CLOUDFLARE WORKERS AI — needs a free Cloudflare account (NOT the same as
-//   hosting your site there) plus an Account ID + an AI-scoped API token.
-//   Billed in "Neurons" (10,000 free/day), not tokens. Model IDs below are
-//   current as of this writing; Cloudflare's catalog changes too, so if one
-//   404s, check developers.cloudflare.com/workers-ai/models/ for the live name:
-//     @cf/google/gemma-4-27b-a4b-it            — Gemma
-//     @cf/meta/llama-3.3-70b-instruct-fp8-fast — Llama (Workers AI kept this
-//       one alive even though Groq killed its own copy — different catalogs)
-//     @cf/mistral/mistral-7b-instruct-v0.1     — Mistral
-//     @cf/qwen/qwen1.5-7b-chat                 — Qwen
-//     @cf/deepseek-ai/deepseek-r1-distill-qwen-32b — DeepSeek (verify this
-//       exact slug in Cloudflare's catalog before relying on it — DeepSeek
-//       naming on Workers AI wasn't fully confirmable at the time of writing)
-//
-// OPENROUTER — backup, ~50 free requests/day shared across all free models.
-//   Confirmed live free slugs as of 2026-09:
-//     google/gemma-4-31b-it:free
-//     nvidia/nemotron-3-ultra-550b-a55b:free
-//     z-ai/glm-4.5-air:free
-//   Same 3-per-request cap as before applies to the `models` fallback array.
+// Env vars needed: GROQ_API_KEY, CF_ACCOUNT_ID, CF_API_TOKEN
 
 const PROVIDERS = {
-  'auto': null, // special-cased in the handler — chains across providers, see handleAuto()
+  'auto': null, // special-cased — tries Groq, falls back to Cloudflare
 
-  'groq-gptoss120b':   { kind: 'groq', model: 'openai/gpt-oss-120b' },
-  'groq-qwen36':       { kind: 'groq', model: 'qwen/qwen3.6-27b' },
-  'groq-llama4-mav':   { kind: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+  'groq-gptoss120b': { kind: 'groq', model: 'openai/gpt-oss-120b' },
+  'groq-qwen36':     { kind: 'groq', model: 'qwen/qwen3.6-27b' },
+  'groq-llama4-mav': { kind: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
 
-  'cf-gemma':          { kind: 'cloudflare', model: '@cf/google/gemma-4-27b-a4b-it' },
-  'cf-llama':          { kind: 'cloudflare', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' },
-  'cf-mistral':        { kind: 'cloudflare', model: '@cf/mistral/mistral-7b-instruct-v0.1' },
-  'cf-qwen':           { kind: 'cloudflare', model: '@cf/qwen/qwen1.5-7b-chat' },
-  'cf-deepseek':       { kind: 'cloudflare', model: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b' },
-
-  'or-gemma4-31b':     { kind: 'openrouter', model: 'google/gemma-4-31b-it:free' },
-  'or-nemotron3ultra': { kind: 'openrouter', model: 'nvidia/nemotron-3-ultra-550b-a55b:free' },
-  'or-glm45air':       { kind: 'openrouter', model: 'z-ai/glm-4.5-air:free' },
-
-  // Live-web-search variants — same free models, but ":online" makes
-  // OpenRouter run a real internet search before answering. Slower and uses
-  // more of the daily free quota, so pick these deliberately, not as default.
-  'or-gemma4-31b-web':     { kind: 'openrouter', model: 'google/gemma-4-31b-it:online' },
-  'or-nemotron3ultra-web': { kind: 'openrouter', model: 'nvidia/nemotron-3-ultra-550b-a55b:online' },
-  'or-glm45air-web':       { kind: 'openrouter', model: 'z-ai/glm-4.5-air:online' },
-
-  // 'smart-web' is just an alias for the strongest available free
-  // combination (GLM 4.5 Air's reasoning quality + real live web search) —
-  // this is the closest free setup gets to "smart AND actually current
-  // information", so it's the one the dropdown defaults to.
-  'smart-web': { kind: 'openrouter', model: 'z-ai/glm-4.5-air:online' },
+  'cf-gemma':    { kind: 'cloudflare', model: '@cf/google/gemma-4-27b-a4b-it' },
+  'cf-llama':    { kind: 'cloudflare', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' },
+  'cf-mistral':  { kind: 'cloudflare', model: '@cf/mistral/mistral-7b-instruct-v0.1' },
+  'cf-qwen':     { kind: 'cloudflare', model: '@cf/qwen/qwen1.5-7b-chat' },
+  'cf-deepseek': { kind: 'cloudflare', model: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b' },
 };
-const DEFAULT_PROVIDER_KEY = 'smart-web';
+const DEFAULT_PROVIDER_KEY = 'auto';
+const AUTO_CHAIN = ['groq-gptoss120b', 'cf-gemma'];
 
-// 'auto' mode tries these in order, fastest/best first, falling through on
-// any failure — stops at the first one that actually returns a reply.
-// NOTE: 'auto' deliberately does NOT include a :online variant — live search
-// is slower and burns free-tier quota faster, so it stays an explicit choice
-// in the dropdown rather than something that fires on every default message.
-const AUTO_CHAIN = ['groq-gptoss120b', 'cf-gemma', 'or-gemma4-31b'];
+const IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 20;
@@ -98,48 +41,61 @@ function isRateLimited(ip) {
   return arr.length > RATE_LIMIT_MAX;
 }
 
-const SYSTEM_PROMPT = (context) =>
+// ===== Link reading =====
+// If the message contains a URL, fetch it and strip it down to plain text
+// so the model can actually discuss the page's real content.
+const URL_REGEX = /https?:\/\/[^\s]+/i;
+async function fetchLinkContent(url) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ObservatoryBot/1.0)' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return null;
+    const html = await r.text();
+    // Crude but dependency-free HTML-to-text: strip scripts/styles/tags,
+    // collapse whitespace. Not perfect, but enough for a model to work with.
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return text.slice(0, 4000); // keep it bounded
+  } catch {
+    return null;
+  }
+}
+
+const SYSTEM_PROMPT = (context, linkContent) =>
   'You are OPERATOR, a genuine, full-featured AI chatbot — think and respond like a normal, capable AI assistant ' +
   '(the kind people have real conversations with), not a narrow search tool or a bot that only answers questions ' +
   'about the page it happens to live on. You can discuss absolutely anything: general knowledge, advice, ' +
-  'explanations, creative requests, casual conversation, whatever the person actually wants to talk about. You ' +
-  'also happen to be embedded in a live dashboard called Observatory, so you can reference its data when relevant, ' +
-  'but that is a bonus feature, not your whole personality. Default to giving thorough, complete answers with ' +
-  'real detail and explanation, the way a knowledgeable person would actually explain something — not a one-line ' +
-  'summary. Only stay brief for genuinely simple things (a yes/no fact, a quick lookup); for anything involving ' +
+  'explanations, creative requests, casual conversation, coding help, whatever the person actually wants. You can ' +
+  'also generate images when asked (the system handles that separately) and read web pages when the person shares ' +
+  'a link. You also happen to be embedded in a live dashboard called Observatory, so you can reference its data ' +
+  'when relevant, but that is a bonus feature, not your whole personality.\n\n' +
+  'Default to giving thorough, complete answers with real detail, the way a knowledgeable person would actually ' +
+  'explain something — not a one-line summary. Only stay brief for genuinely simple things; for anything involving ' +
   'explanation, opinion, how-to, or discussion, write a full, well-developed answer.\n\n' +
-  'THINK BEFORE ANSWERING — for anything with real complexity (a tradeoff, a multi-step problem, something with ' +
-  'nuance or competing considerations), actually reason through it: consider the angles, weigh them, THEN give a ' +
-  'clear conclusion — don\'t just pattern-match to a surface-level first answer. If a question has a "well, it ' +
-  'depends" quality to it, say what it depends on rather than picking one answer and hiding the nuance. When you ' +
-  'have real web search results available for a question, actually use and cite what you found rather than ' +
-  'ignoring it in favor of what you already thought you knew.\n\n' +
-  'PERSONALITY MATTERS — this applies no matter which underlying model is answering: never respond like a flat, ' +
-  'robotic data-lookup tool, even for simple factual questions. Have some warmth and personality — a bit of wit, ' +
-  'genuine engagement, a real voice — the way a person would want a smart friend to answer, not a search engine ' +
-  'reading out a fact. This matters just as much as being correct.\n\n' +
+  'THINK BEFORE ANSWERING — for anything with real complexity, actually reason through it: consider the angles, ' +
+  'weigh them, then give a clear conclusion. If a question has a "well, it depends" quality, say what it depends ' +
+  'on rather than hiding the nuance.\n\n' +
+  'For coding questions: write complete, correct, well-commented code. Use proper markdown code fences with the ' +
+  'language specified (```javascript, ```python, etc.) since the interface renders these specially and lets the ' +
+  'person download the code as a file.\n\n' +
   'The one place to be careful: if asked for a specific LIVE number this dashboard tracks (a stock price, crypto ' +
   'price, quake magnitude, currency rate, weather reading, etc.), only state a figure if it actually appears in ' +
   'the "Live dashboard data" block below — say "I don\'t have that in the current live feed" rather than guess. ' +
-  'This matters MOST for financial figures specifically — never state a stock price, index value, or exchange ' +
-  'rate from memory, even one that sounds plausible; always defer to the live data block or say you don\'t have ' +
-  'it. That\'s it — everything else, answer like the full assistant you are.\n\n' +
+  'This matters MOST for financial figures — never state one from memory, even a plausible-sounding one.\n\n' +
+  (linkContent ? `The person shared a link. Here is the actual text content of that page — use it to answer their question about it:\n"""${linkContent}"""\n\n` : '') +
   (context ? `Live dashboard data (only source of truth for THIS dashboard's own numbers): ${JSON.stringify(context).slice(0, 2000)}` : 'No live dashboard data was passed for this question.');
-
-// ===== Per-provider callers =====
-// Each returns { reply, model } on success, or throws/returns null on failure
-// (handleAuto() treats both a thrown error and a null return as "try the next
-// one in the chain" — a manually-selected single provider surfaces the error
-// directly instead).
 
 async function callGroq(env, model, messages) {
   if (!env.GROQ_API_KEY) throw new Error('GROQ_API_KEY is not set.');
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.GROQ_API_KEY}`,
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.GROQ_API_KEY}` },
     body: JSON.stringify({ model, messages, max_tokens: 1500, temperature: 0.6 }),
   });
   if (!r.ok) {
@@ -149,26 +105,17 @@ async function callGroq(env, model, messages) {
   const d = await r.json();
   const reply = d.choices?.[0]?.message?.content?.trim();
   if (!reply) throw new Error('Groq returned an empty reply.');
-  return { reply, model: `groq/${model}` };
+  return { reply, model };
 }
 
 async function callCloudflare(env, model, messages) {
   if (!env.CF_ACCOUNT_ID || !env.CF_API_TOKEN) {
     throw new Error('CF_ACCOUNT_ID and/or CF_API_TOKEN is not set.');
   }
-  // Cloudflare's Workers AI REST endpoint is separate from Cloudflare Pages —
-  // this is just calling their AI inference API like any other external
-  // provider; it works the same whether your SITE is hosted on Vercel,
-  // Cloudflare, or anywhere else. Needs a Cloudflare account (free) and an
-  // API token scoped to "Workers AI: Read", plus your numeric Account ID —
-  // both found in the Cloudflare dashboard, NOT the same as any Vercel keys.
   const url = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/${model}`;
   const r = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.CF_API_TOKEN}`,
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.CF_API_TOKEN}` },
     body: JSON.stringify({ messages, max_tokens: 1500 }),
   });
   if (!r.ok) {
@@ -178,32 +125,37 @@ async function callCloudflare(env, model, messages) {
   const d = await r.json();
   const reply = d.result?.response?.trim();
   if (!reply) throw new Error('Cloudflare Workers AI returned an empty reply.');
-  return { reply, model: `cloudflare/${model}` };
+  return { reply, model };
 }
 
-async function callOpenRouter(env, model, messages) {
-  if (!env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not set.');
-  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+// ===== Image generation (Cloudflare Workers AI — Flux) =====
+async function generateImage(env, prompt) {
+  if (!env.CF_ACCOUNT_ID || !env.CF_API_TOKEN) {
+    throw new Error('CF_ACCOUNT_ID and/or CF_API_TOKEN is not set — needed for image generation.');
+  }
+  const url = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/${IMAGE_MODEL}`;
+  const r = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://observatory-dashboard.vercel.app',
-      'X-Title': 'Observatory',
-    },
-    // Single model per call here (not the 3-item fallback array) since the
-    // fallback logic across providers now lives in handleAuto() instead —
-    // simpler to reason about than nesting two different fallback systems.
-    body: JSON.stringify({ model, messages, max_tokens: 1500, temperature: 0.6 }),
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.CF_API_TOKEN}` },
+    body: JSON.stringify({ prompt, steps: 4 }),
   });
   if (!r.ok) {
     const t = await r.text();
-    const err = new Error('OpenRouter error'); err.detail = t.slice(0, 300); throw err;
+    const err = new Error('Image generation error'); err.detail = t.slice(0, 300); throw err;
   }
   const d = await r.json();
-  const reply = d.choices?.[0]?.message?.content?.trim();
-  if (!reply) throw new Error('OpenRouter returned an empty reply.');
-  return { reply, model: d.model || `openrouter/${model}` };
+  // Flux returns a base64 JPEG in result.image
+  const b64 = d.result?.image;
+  if (!b64) throw new Error('Image generation returned no image.');
+  return { imageBase64: b64 };
+}
+
+// Detects "draw/generate/create an image of X" style requests.
+const IMAGE_TRIGGER = /^(draw|generate|create|make)\s+(me\s+)?(an?\s+)?(image|picture|photo|drawing|illustration)\s+(of|showing|depicting)?\s*/i;
+function extractImagePrompt(message) {
+  const m = message.match(IMAGE_TRIGGER);
+  if (!m) return null;
+  return message.slice(m[0].length).trim() || message;
 }
 
 async function callProvider(env, key, messages) {
@@ -212,19 +164,15 @@ async function callProvider(env, key, messages) {
   switch (cfg.kind) {
     case 'groq':       return callGroq(env, cfg.model, messages);
     case 'cloudflare': return callCloudflare(env, cfg.model, messages);
-    case 'openrouter': return callOpenRouter(env, cfg.model, messages);
     default: throw new Error(`Unknown provider kind: ${cfg.kind}`);
   }
 }
 
-// 'auto' mode: walk AUTO_CHAIN in order, return the first success, collect
-// every failure along the way so a total failure still explains what broke.
 async function handleAuto(env, messages) {
   const errors = [];
   for (const key of AUTO_CHAIN) {
     try {
-      const result = await callProvider(env, key, messages);
-      return result;
+      return await callProvider(env, key, messages);
     } catch (e) {
       errors.push(`${key}: ${e.detail || e.message}`);
     }
@@ -247,7 +195,6 @@ module.exports = async (req, res) => {
         GROQ_API_KEY: Boolean(process.env.GROQ_API_KEY),
         CF_ACCOUNT_ID: Boolean(process.env.CF_ACCOUNT_ID),
         CF_API_TOKEN: Boolean(process.env.CF_API_TOKEN),
-        OPENROUTER_API_KEY: Boolean(process.env.OPENROUTER_API_KEY),
       },
       providers: Object.keys(PROVIDERS),
       auto_chain: AUTO_CHAIN,
@@ -272,13 +219,24 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Message was empty after cleanup.' });
   }
 
-  // NOTE: uses `in` rather than a truthy check — PROVIDERS['auto'] is
-  // deliberately `null` (auto is special-cased below, not a real entry), so
-  // a plain `PROVIDERS[provider] ? ... : ...` would silently treat "auto"
-  // as invalid and always fall through to the default instead.
+  // Image generation branch — short-circuits before the normal chat flow.
+  const imagePrompt = extractImagePrompt(cleanMessage);
+  if (imagePrompt) {
+    try {
+      const result = await generateImage(process.env, imagePrompt);
+      return res.status(200).json({ image: result.imageBase64, prompt: imagePrompt });
+    } catch (e) {
+      return res.status(502).json({ error: 'Image generation error', detail: e.detail || e.message });
+    }
+  }
+
+  // Link-reading: if the message has a URL, fetch its text content first.
+  const urlMatch = cleanMessage.match(URL_REGEX);
+  const linkContent = urlMatch ? await fetchLinkContent(urlMatch[0]) : null;
+
   const providerKey = (provider in PROVIDERS) ? provider : DEFAULT_PROVIDER_KEY;
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT(context) },
+    { role: 'system', content: SYSTEM_PROMPT(context, linkContent) },
     { role: 'user', content: cleanMessage },
   ];
 
