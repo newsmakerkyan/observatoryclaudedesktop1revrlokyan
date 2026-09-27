@@ -40,6 +40,8 @@
     background-size: 28px 28px;
   }
   ::selection{background:var(--phosphor-dim);color:var(--void);}
+  #starfield{position:fixed; inset:0; z-index:0; pointer-events:none;}
+  header,main,.ticker,footer,#chatToggle,#chatPanel{position:relative; z-index:1;}
 
   a{color:var(--phosphor);}
 
@@ -79,6 +81,12 @@
   .panel{
     background:var(--panel); border:1px solid var(--panel-edge);
     position:relative;
+    transition: box-shadow .25s ease, border-color .25s ease;
+  }
+  /* Live-data glow — fires on hover (desktop) and touch (:active covers taps) */
+  .panel:hover, .panel:active{
+    border-color: var(--phosphor);
+    box-shadow: 0 0 22px rgba(57,255,136,.35), 0 0 50px rgba(57,255,136,.12);
   }
   .panel::before{
     content:''; position:absolute; top:0; left:0; width:14px; height:14px;
@@ -336,7 +344,8 @@
   .festival-card .fdate{font-family:var(--mono); font-size:10px; color:var(--text-muted); margin-top:2px;}
   .festival-card .fcount{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--phosphor); text-align:right; white-space:nowrap;}
   .festival-card.today .fcount{color:var(--amber); font-weight:700;}
-  .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px; min-height:120px;}
+  .fin-panel{border:1px solid var(--panel-edge); background:var(--panel); padding:12px 14px; min-height:120px; transition:box-shadow .25s ease, border-color .25s ease;}
+  .fin-panel:hover, .fin-panel:active{ border-color:var(--phosphor); box-shadow:0 0 22px rgba(57,255,136,.35), 0 0 50px rgba(57,255,136,.12); }
   .fin-cols-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 18px;}
   .fin-panel h3{margin:0 0 8px; font-family:var(--mono); font-size:10.5px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); font-weight:500;}
   .fin-row{display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--grid); font-family:var(--mono); font-size:12px;}
@@ -360,6 +369,7 @@
 </style>
 </head>
 <body>
+<canvas id="starfield"></canvas>
 
 <header>
   <div class="brand">
@@ -448,7 +458,7 @@
   <div class="wx-grid" id="wxGrid">
     <div class="wx-now"><span class="loading">ACQUIRING SIGNAL…</span></div>
   </div>
-  <div class="wx-secondary">
+  <div class="wx-secondary" style="grid-template-columns:1fr 1fr 1fr;">
     <div class="fin-panel">
       <h3>Sunlight <span id="sunlightCity" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
       <div id="sunlightData" class="atmos-tight"><div class="loading">ACQUIRING SIGNAL…</div></div>
@@ -456,6 +466,10 @@
     <div class="fin-panel">
       <h3>Station Detail <span id="stationCity" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
       <div id="atmosList" class="atmos-tight"><div class="loading">ACQUIRING SIGNAL…</div></div>
+    </div>
+    <div class="fin-panel">
+      <h3>Air Quality <span id="aqiCity" style="float:right; color:var(--text-muted); font-weight:400;">--</span></h3>
+      <div id="aqiData" class="atmos-tight"><div class="loading">ACQUIRING SIGNAL…</div></div>
     </div>
   </div>
 </div>
@@ -482,6 +496,10 @@
       <div class="fin-panel">
         <h3>Bonds <span style="color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0;">— via ETFs</span></h3>
         <div id="bondsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
+      </div>
+      <div class="fin-panel">
+        <h3>Index Funds</h3>
+        <div id="indexFundsList" class="panel-body" style="padding:0;"><div class="skel"></div></div>
       </div>
     </div>
     <div class="fin-stack">
@@ -531,7 +549,7 @@
 
 <!-- WORLD ALMANAC -->
 <div class="wide" id="sec-almanac">
-  <div class="section-head">World Almanac <span class="sub">100 most prominent nations · reference data</span></div>
+  <div class="section-head">World Almanac <span class="sub">197 nations · full reference data</span></div>
   <div class="country-grid" id="countryGrid"></div>
 </div>
 
@@ -548,9 +566,7 @@
 <div class="wide" style="margin: 8px 0 24px;">
   <div class="panel">
     <div class="panel-body" style="font-family:var(--sans); font-size:13px; line-height:1.6; text-align:center;">
-      Built by Kyan Goel, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds. 
-       <hr>  for any suggestions or queries email- newsislive@protonmail.com
-         
+      Built by Kyan, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds.
     </div>
   </div>
 </div>
@@ -562,22 +578,17 @@
   <div class="ai-provider-toggle">
     <span class="ai-provider-label active" style="color:var(--text-muted); text-transform:none; letter-spacing:0;">AI:</span>
     <select id="aiModelPicker" class="ai-model-select">
-      <option value="smart-web">🌐 Smartest + Web (recommended)</option>
-      <option value="auto">Auto (fastest)</option>
-      <option value="groq-gptoss120b">GPT-OSS 120B (Groq)</option>
-      <option value="groq-qwen36">Qwen 3.6 27B (Groq)</option>
-      <option value="groq-llama4-mav">Llama 4 Maverick (Groq)</option>
-      <option value="cf-gemma">Gemma 4 (Cloudflare)</option>
-      <option value="cf-llama">Llama 3.3 70B (Cloudflare)</option>
-      <option value="cf-mistral">Mistral 7B (Cloudflare)</option>
-      <option value="cf-qwen">Qwen 1.5 (Cloudflare)</option>
-      <option value="cf-deepseek">DeepSeek R1 (Cloudflare)</option>
-      <option value="or-gemma4-31b">Gemma 4 31B (OpenRouter)</option>
-      <option value="or-nemotron3ultra">Nemotron 3 Ultra (OpenRouter)</option>
-      <option value="or-glm45air">GLM 4.5 Air (OpenRouter)</option>
-      <option value="or-gemma4-31b-web">🌐 Gemma 4 31B + Web</option>
-      <option value="or-nemotron3ultra-web">🌐 Nemotron 3 Ultra + Web</option>
+      <option value="auto">Auto (recommended)</option>
+      <option value="groq-gptoss120b">GPT-OSS 120B</option>
+      <option value="groq-qwen36">Qwen 3.6 27B</option>
+      <option value="groq-llama4-mav">Llama 4 Maverick</option>
+      <option value="cf-gemma">Gemma 4</option>
+      <option value="cf-llama">Llama 3.3 70B</option>
+      <option value="cf-mistral">Mistral 7B</option>
+      <option value="cf-qwen">Qwen 1.5</option>
+      <option value="cf-deepseek">DeepSeek R1</option>
     </select>
+    <span class="clear" id="chatImageHint" title="Tip: ask to draw/generate an image, or paste a link">🖼️</span>
     <span class="clear" id="chatClear" title="Clear saved chat history">🗑</span>
   </div>
   <div class="chat-log" id="chatLog"></div>
@@ -755,6 +766,17 @@ const COUNTRIES = [
   ['gn','Guinea','Conakry','Africa',14],['rw','Rwanda','Kigali','Africa',14],
   ['bj','Benin','Porto-Novo','Africa',13],['bi','Burundi','Gitega','Africa',13],
   ['tn','Tunisia','Tunis','Africa',12],['ss','South Sudan','Juba','Africa',11],
+  ['ly','Libya','Tripoli','Africa',7],['er','Eritrea','Asmara','Africa',3.7],
+  ['sl','Sierra Leone','Freetown','Africa',8.6],['tg','Togo','Lomé','Africa',8.6],
+  ['cf','Central African Republic','Bangui','Africa',5.5],['lr','Liberia','Monrovia','Africa',5.4],
+  ['mr','Mauritania','Nouakchott','Africa',4.9],['na','Namibia','Windhoek','Africa',2.6],
+  ['bw','Botswana','Gaborone','Africa',2.6],['ls','Lesotho','Maseru','Africa',2.3],
+  ['gm','Gambia','Banjul','Africa',2.6],['ga','Gabon','Libreville','Africa',2.3],
+  ['gw','Guinea-Bissau','Bissau','Africa',2.1],['gq','Equatorial Guinea','Malabo','Africa',1.7],
+  ['mu','Mauritius','Port Louis','Africa',1.3],['sz','Eswatini','Mbabane','Africa',1.2],
+  ['dj','Djibouti','Djibouti City','Africa',1.1],['km','Comoros','Moroni','Africa',0.9],
+  ['cv','Cabo Verde','Praia','Africa',0.6],['st','São Tomé and Príncipe','São Tomé','Africa',0.2],
+  ['sc','Seychelles','Victoria','Africa',0.1],['cg','Congo (Rep.)','Brazzaville','Africa',6.1],
   // Asia
   ['in','India','New Delhi','Asia',1428],['cn','China','Beijing','Asia',1412],
   ['id','Indonesia','Jakarta','Asia',277],['pk','Pakistan','Islamabad','Asia',241],
@@ -793,8 +815,49 @@ const COUNTRIES = [
   ['ar','Argentina','Buenos Aires','South America',46],['pe','Peru','Lima','South America',34],
   ['ve','Venezuela','Caracas','South America',28.3],['cl','Chile','Santiago','South America',19.6],
   ['ec','Ecuador','Quito','South America',18],['bo','Bolivia','Sucre','South America',12],
+  ['py','Paraguay','Asunción','South America',6.9],['uy','Uruguay','Montevideo','South America',3.4],
+  ['gy','Guyana','Georgetown','South America',0.8],['sr','Suriname','Paramaribo','South America',0.6],
   // Oceania
   ['au','Australia','Canberra','Oceania',26],['nz','New Zealand','Wellington','Oceania',5.2],
+  ['pg','Papua New Guinea','Port Moresby','Oceania',10.3],['fj','Fiji','Suva','Oceania',0.9],
+  ['sb','Solomon Islands','Honiara','Oceania',0.7],['vu','Vanuatu','Port Vila','Oceania',0.3],
+  ['ws','Samoa','Apia','Oceania',0.2],['ki','Kiribati','Tarawa','Oceania',0.13],
+  ['fm','Micronesia','Palikir','Oceania',0.1],['to','Tonga','Nuku\u2019alofa','Oceania',0.1],
+  ['mh','Marshall Islands','Majuro','Oceania',0.04],['pw','Palau','Ngerulmud','Oceania',0.02],
+  ['nr','Nauru','Yaren','Oceania',0.01],['tv','Tuvalu','Funafuti','Oceania',0.01],
+  // Middle East / West & Central Asia (added)
+  ['il','Israel','Jerusalem','Asia',9.8],['lb','Lebanon','Beirut','Asia',5.5],
+  ['om','Oman','Muscat','Asia',4.6],['ae','United Arab Emirates','Abu Dhabi','Asia',9.4],
+  ['bh','Bahrain','Manama','Asia',1.5],['am','Armenia','Yerevan','Asia',3.0],
+  ['ge','Georgia','Tbilisi','Asia',3.7],['kg','Kyrgyzstan','Bishkek','Asia',6.9],
+  ['tj','Tajikistan','Dushanbe','Asia',10.1],['tm','Turkmenistan','Ashgabat','Asia',6.4],
+  ['mn','Mongolia','Ulaanbaatar','Asia',3.4],['la','Laos','Vientiane','Asia',7.6],
+  ['bt','Bhutan','Thimphu','Asia',0.8],['mv','Maldives','Malé','Asia',0.5],
+  ['bn','Brunei','Bandar Seri Begawan','Asia',0.5],['tl','Timor-Leste','Dili','Asia',1.4],
+  ['ps','Palestine','Ramallah','Asia',5.4],['cy','Cyprus','Nicosia','Asia',1.3],
+  // Remaining Europe (added)
+  ['pt','Portugal','Lisbon','Europe',10.3],['gr','Greece','Athens','Europe',10.4],
+  ['hu','Hungary','Budapest','Europe',9.6],['at','Austria','Vienna','Europe',9.1],
+  ['by','Belarus','Minsk','Europe',9.2],['rs','Serbia','Belgrade','Europe',6.6],
+  ['bg','Bulgaria','Sofia','Europe',6.4],['sk','Slovakia','Bratislava','Europe',5.4],
+  ['hr','Croatia','Zagreb','Europe',3.9],['ba','Bosnia and Herzegovina','Sarajevo','Europe',3.2],
+  ['md','Moldova','Chișinău','Europe',2.5],['al','Albania','Tirana','Europe',2.8],
+  ['lt','Lithuania','Vilnius','Europe',2.7],['lv','Latvia','Riga','Europe',1.8],
+  ['ee','Estonia','Tallinn','Europe',1.3],['mk','North Macedonia','Skopje','Europe',1.8],
+  ['si','Slovenia','Ljubljana','Europe',2.1],['me','Montenegro','Podgorica','Europe',0.6],
+  ['lu','Luxembourg','Luxembourg City','Europe',0.7],['mt','Malta','Valletta','Europe',0.5],
+  ['ad','Andorra','Andorra la Vella','Europe',0.08],['mc','Monaco','Monaco','Europe',0.04],
+  ['li','Liechtenstein','Vaduz','Europe',0.04],['sm','San Marino','San Marino','Europe',0.03],
+  ['va','Vatican City','Vatican City','Europe',0.0008],['xk','Kosovo','Pristina','Europe',1.8],
+  // Remaining Central America / Caribbean (added)
+  ['ni','Nicaragua','Managua','North America',6.9],['sv','El Salvador','San Salvador','North America',6.3],
+  ['cr','Costa Rica','San José','North America',5.2],['pa','Panama','Panama City','North America',4.4],
+  ['bz','Belize','Belmopan','North America',0.4],['jm','Jamaica','Kingston','North America',2.8],
+  ['tt','Trinidad and Tobago','Port of Spain','North America',1.5],['bs','Bahamas','Nassau','North America',0.4],
+  ['bb','Barbados','Bridgetown','North America',0.3],['lc','Saint Lucia','Castries','North America',0.18],
+  ['gd','Grenada','St. George\u2019s','North America',0.11],['vc','Saint Vincent and the Grenadines','Kingstown','North America',0.11],
+  ['ag','Antigua and Barbuda','St. John\u2019s','North America',0.1],['dm','Dominica','Roseau','North America',0.07],
+  ['kn','Saint Kitts and Nevis','Basseterre','North America',0.05],
 ];
 
 // WMO weather codes (used by Open-Meteo) mapped to a short description + symbol
@@ -981,6 +1044,10 @@ const STOCK_LABELS = { AAPL:'Apple', MSFT:'Microsoft', GOOGL:'Google', AMZN:'Ama
 const INDEX_LABELS = { SPX:'S&P 500 (SPY)', DJI:'Dow Jones (DIA)', IXIC:'Nasdaq (QQQ)', FTSE:'FTSE 100 (FLGB)', GDAXI:'DAX (EWG)', FCHI:'CAC 40 (EWQ)', N225:'Nikkei 225 (EWJ)', HSI:'Hang Seng (EWH)', SHCOMP:'Shanghai Comp. (ASHR)' };
 const SHARE_LABELS = { JPM:'JPMorgan', WMT:'Walmart', V:'Visa', JNJ:'Johnson & Johnson', 'BRK.B':'Berkshire Hathaway' };
 const BOND_LABELS = { US20Y:'20Y+ Treasury (TLT)', US10Y:'7-10Y Treasury (IEF)', TOTAL:'Total Bond Mkt (BND)', HIYIELD:'High-Yield Corp (HYG)' };
+// Popular low-cost index funds (Vanguard/Schwab ETFs) — distinct from the
+// Major Indices panel above (which tracks market benchmarks like the S&P
+// 500 itself via SPY); these are the actual FUNDS people invest in.
+const INDEXFUND_LABELS = { VOO:'Vanguard S&P 500 (VOO)', VTI:'Vanguard Total Stock Mkt (VTI)', VXUS:'Vanguard Total Int\u2019l (VXUS)', VUG:'Vanguard Growth (VUG)', VYM:'Vanguard High Div. Yield (VYM)', SCHD:'Schwab US Div. Equity (SCHD)' };
 function renderFinRows(containerId, labels, values, simulated){
   const rows = Object.entries(labels).map(([sym,name]) => {
     // "— sim" means NO live backend at all (missing key) — a real, honest
@@ -1003,6 +1070,7 @@ async function loadFinance(){
     renderFinRows('indicesList', INDEX_LABELS, d.indices, d.simulated);
     renderFinRows('sharesList', SHARE_LABELS, d.shares, d.simulated);
     renderFinRows('bondsList', BOND_LABELS, d.bonds, d.simulated);
+    renderFinRows('indexFundsList', INDEXFUND_LABELS, d.indexFunds, d.simulated);
     applySearchFilter();
     // Be honest in the UI when this is placeholder data, not real quotes —
     // a convincing-looking fake number is worse than no number at all.
@@ -1015,6 +1083,7 @@ async function loadFinance(){
     document.getElementById('indicesList').innerHTML = note;
     document.getElementById('sharesList').innerHTML = note;
     document.getElementById('bondsList').innerHTML = note;
+    document.getElementById('indexFundsList').innerHTML = note;
   }
 }
 
@@ -1090,8 +1159,41 @@ async function loadAtmos(){
 function populateWxSelect(){
   const sel = document.getElementById('wxCity');
   sel.innerHTML = STATIONS.map((s,i) => `<option value="${i}">${s.name}</option>`).join('');
-  sel.addEventListener('change', () => loadWeatherDetail(+sel.value));
+  sel.addEventListener('change', () => { loadWeatherDetail(+sel.value); loadAirQuality(+sel.value); });
 }
+/* ================= AIR QUALITY INDEX (Open-Meteo — free, no key) ================= */
+// US AQI scale: 0-50 Good, 51-100 Moderate, 101-150 Unhealthy for Sensitive
+// Groups, 151-200 Unhealthy, 201-300 Very Unhealthy, 300+ Hazardous.
+function aqiLabel(aqi){
+  if(aqi == null) return ['Unknown', 'var(--text-muted)'];
+  if(aqi <= 50) return ['Good', 'var(--phosphor)'];
+  if(aqi <= 100) return ['Moderate', 'var(--amber)'];
+  if(aqi <= 150) return ['Unhealthy (Sensitive)', 'var(--amber)'];
+  if(aqi <= 200) return ['Unhealthy', 'var(--red)'];
+  if(aqi <= 300) return ['Very Unhealthy', 'var(--red)'];
+  return ['Hazardous', 'var(--red)'];
+}
+async function loadAirQuality(index){
+  const s = STATIONS[index];
+  const el = document.getElementById('aqiData');
+  document.getElementById('aqiCity').textContent = s.name;
+  try{
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${s.lat}&longitude=${s.lng}&current=us_aqi,pm2_5,pm10,uv_index`;
+    const res = await fetch(url);
+    const d = await res.json();
+    const c = d.current;
+    const [label, color] = aqiLabel(c.us_aqi);
+    el.innerHTML = `
+      <div class="row"><span class="tag">AQI (US)</span><span class="val" style="color:${color}">${c.us_aqi ?? '—'} · ${label}</span></div>
+      <div class="row"><span class="tag">PM2.5</span><span class="val">${c.pm2_5?.toFixed(1) ?? '—'} µg/m³</span></div>
+      <div class="row"><span class="tag">PM10</span><span class="val">${c.pm10?.toFixed(1) ?? '—'} µg/m³</span></div>
+      <div class="row"><span class="tag">UV Index</span><span class="val">${c.uv_index?.toFixed(1) ?? '—'}</span></div>
+    `;
+  }catch(e){
+    el.innerHTML = '<div class="loading">SIGNAL LOST</div>';
+  }
+}
+
 async function loadWeatherDetail(index){
   const s = STATIONS[index];
   const grid = document.getElementById('wxGrid');
@@ -1477,7 +1579,7 @@ const chatLog = document.getElementById('chatLog');
 /* ---- AI model selection (persisted) ---- */
 // The value sent matches the key names in api/chat.js's MODELS object —
 // keep these two lists in sync if you ever add/remove a model.
-let aiProvider = localStorage.getItem('observatory_ai_provider') || 'smart-web';
+let aiProvider = localStorage.getItem('observatory_ai_provider') || 'auto';
 const picker = document.getElementById('aiModelPicker');
 picker.value = aiProvider;
 picker.addEventListener('change', e => {
@@ -1499,13 +1601,66 @@ function saveToHistory(text, who){
   localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
 }
 
+// Detects fenced code blocks (```lang\ncode\n```) so bot replies can render
+// them with a "Download" button instead of plain wrapped text.
+function renderBotContent(container, text){
+  const parts = text.split(/```(\w*)\n([\s\S]*?)```/g);
+  // split() with capture groups gives: [plain, lang, code, plain, lang, code, ...]
+  for(let i = 0; i < parts.length; i += 3){
+    if(parts[i]) container.appendChild(document.createTextNode(parts[i]));
+    const lang = parts[i+1], code = parts[i+2];
+    if(code !== undefined){
+      const pre = document.createElement('pre');
+      pre.style.cssText = 'background:var(--void);border:1px solid var(--panel-edge);padding:10px;overflow-x:auto;margin:8px 0;font-size:11px;';
+      const codeEl = document.createElement('code');
+      codeEl.textContent = code;
+      pre.appendChild(codeEl);
+      container.appendChild(pre);
+
+      const dl = document.createElement('button');
+      dl.textContent = '⬇ Download';
+      dl.style.cssText = 'background:transparent;border:1px solid var(--phosphor-dim);color:var(--phosphor);font-family:var(--mono);font-size:10px;padding:3px 8px;cursor:pointer;margin-bottom:8px;';
+      dl.addEventListener('click', () => {
+        const ext = { javascript:'js', python:'py', html:'html', css:'css', json:'json', bash:'sh', java:'java', cpp:'cpp', c:'c', typescript:'ts' }[lang.toLowerCase()] || 'txt';
+        const blob = new Blob([code], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `code.${ext}`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+      container.appendChild(dl);
+    }
+  }
+}
+
 function addMsg(text, who, skipSave){
   const div = document.createElement('div');
   div.className = `msg ${who}`;
-  div.textContent = text;
+  if(who === 'bot' && text.includes('```')){
+    renderBotContent(div, text);
+  } else {
+    div.textContent = text;
+  }
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
   if(!skipSave && who !== 'thinking') saveToHistory(text, who);
+  return div;
+}
+function addImageMsg(base64, prompt, skipSave){
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  const img = document.createElement('img');
+  img.src = `data:image/jpeg;base64,${base64}`;
+  img.style.cssText = 'max-width:100%;border:1px solid var(--panel-edge);margin-top:6px;display:block;';
+  img.alt = prompt;
+  const label = document.createElement('div');
+  label.textContent = `Generated: "${prompt}"`;
+  div.appendChild(label);
+  div.appendChild(img);
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  if(!skipSave) saveToHistory(`[image] ${prompt}`, 'bot');
   return div;
 }
 async function handleSend(text){
@@ -1522,7 +1677,8 @@ async function handleSend(text){
   }
 
   // Fallback: real AI via the secure backend — provider picked by the dropdown.
-  // Requires OPENROUTER_API_KEY set server-side.
+  // Also handles image-generation replies and link-reading transparently —
+  // the backend decides which based on the message content.
   const thinkingEl = addMsg('thinking…', 'thinking', true);
   try{
     const res = await fetch('/api/chat', {
@@ -1537,12 +1693,12 @@ async function handleSend(text){
     const data = await res.json();
     thinkingEl.remove();
     if(!res.ok){
-      // The backend captures the SPECIFIC reason from the AI provider (e.g.
-      // "401 Unauthorized" or "model not found") in data.detail — show that
-      // too instead of just the generic "AI provider error", so the exact
-      // problem is visible right here without digging through logs.
       const full = data.detail ? `${data.error || 'AI backend error.'} — ${data.detail}` : (data.error || 'AI backend error.');
       addMsg(full, 'bot');
+      return;
+    }
+    if(data.image){
+      addImageMsg(data.image, data.prompt);
       return;
     }
     addMsg(data.reply, 'bot');
@@ -1580,6 +1736,39 @@ if(savedHistory.length){
   addMsg("Operator online — I'm a full AI chatbot, ask me anything. I can also check in on the ISS, quakes, markets, weather, or whatever's live on this dashboard.", 'bot', true);
 }
 
+/* ================= STARFIELD BACKGROUND ================= */
+// Lightweight drifting-dot starfield behind the whole page — pure canvas,
+// no library needed. Sits at z-index 0, below the existing grid background
+// pattern's visual weight since it's just faint drifting phosphor dots.
+(function initStarfield(){
+  const c = document.getElementById('starfield');
+  const ctx = c.getContext('2d');
+  function resize(){ c.width = window.innerWidth; c.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  const STAR_COUNT = window.innerWidth < 700 ? 60 : 130; // fewer on mobile for performance
+  const stars = Array.from({ length: STAR_COUNT }, () => ({
+    x: Math.random() * c.width,
+    y: Math.random() * c.height,
+    r: Math.random() * 1.3 + 0.2,
+    speed: Math.random() * 0.12 + 0.02,
+    o: Math.random() * 0.5 + 0.15,
+  }));
+  function draw(){
+    ctx.clearRect(0, 0, c.width, c.height);
+    stars.forEach(s => {
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(57,255,136,${s.o})`;
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+      s.y += s.speed;
+      if(s.y > c.height) s.y = 0;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
 /* ================= BOOT ================= */
 // Deliberately staggered rather than fired all at once: the globe's WebGL
 // setup is already the heaviest single thing on this page, so rendering
@@ -1596,7 +1785,7 @@ const onIdle = window.requestIdleCallback || (fn => setTimeout(fn, 1));
 
 // Chunk 1 — fires immediately: fast, small, already-critical panels.
 loadQuakes(); loadISS(); loadMarkets(); loadAtmos();
-populateWxSelect(); loadWeatherDetail(0);
+populateWxSelect(); loadWeatherDetail(0); loadAirQuality(0);
 renderMoonPhase();
 
 // Chunk 2 — deferred one idle slot: renders ~100+ DOM elements at once.
@@ -1618,7 +1807,7 @@ setInterval(loadISS, 5 * 1000);                // every 5 sec (fast mover)
 setInterval(loadMarkets, 60 * 1000);           // every 60 sec
 setInterval(loadAtmos, 10 * 60 * 1000);        // every 10 min — background only, feeds ticker + chatbot
 setInterval(renderMoonPhase, 60 * 60 * 1000);  // every hour — barely changes, no API call anyway
-setInterval(() => loadWeatherDetail(+document.getElementById('wxCity').value), 10 * 60 * 1000); // every 10 min
+setInterval(() => { loadWeatherDetail(+document.getElementById('wxCity').value); loadAirQuality(+document.getElementById('wxCity').value); }, 10 * 60 * 1000); // every 10 min
 setInterval(() => loadNews(currentNewsCat), 4 * 60 * 1000);   // every 4 min — stays well under Noozra's 100/day cap
 setInterval(loadCurrencyAndMetals, 10 * 60 * 1000);           // every 10 min — no key, generous limits
 setInterval(loadFinance, 20 * 60 * 1000);                     // every 20 min — respects Finnhub's 60/min free cap with room to spare
