@@ -19,16 +19,24 @@ const PROVIDERS = {
   'groq-qwen36':     { kind: 'groq', model: 'qwen/qwen3.6-27b' },
   'groq-llama4-mav': { kind: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
 
-  'cf-gemma':    { kind: 'cloudflare', model: '@cf/google/gemma-4-27b-a4b-it' },
-  'cf-llama':    { kind: 'cloudflare', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' },
-  'cf-mistral':  { kind: 'cloudflare', model: '@cf/mistral/mistral-7b-instruct-v0.1' },
-  'cf-qwen':     { kind: 'cloudflare', model: '@cf/qwen/qwen1.5-7b-chat' },
-  'cf-deepseek': { kind: 'cloudflare', model: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b' },
+  // All verified against Cloudflare's live model catalog (65 active models,
+  // checked 2026-09-27). Their catalog rotates weekly with no notice, so if
+  // any of these ever 404, re-check https://developers.cloudflare.com/workers-ai/models/
+  'cf-gemma':       { kind: 'cloudflare', model: '@cf/google/gemma-4-26b-a4b-it' },       // was 27b — wrong, fixed to 26b
+  'cf-llama':       { kind: 'cloudflare', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' }, // confirmed current
+  'cf-llama4scout': { kind: 'cloudflare', model: '@cf/meta/llama-4-scout-17b-16e-instruct' },  // new — flagship, alive on CF even though Groq killed its copy
+  'cf-mistral':     { kind: 'cloudflare', model: '@cf/mistralai/mistral-small-3.1-24b-instruct' }, // old v0.1 slug was dead — this is CF's current Mistral flagship
+  'cf-qwen':        { kind: 'cloudflare', model: '@cf/qwen/qwen3-30b-a3b-fp8' },          // old qwen1.5-7b-chat no longer exists — this is CF's current Qwen flagship
+  'cf-deepseek':    { kind: 'cloudflare', model: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b' }, // confirmed current
+  'cf-gptoss120b':  { kind: 'cloudflare', model: '@cf/openai/gpt-oss-120b' },             // new — same model Groq serves, useful as a CF-side fallback
 };
 const DEFAULT_PROVIDER_KEY = 'auto';
-const AUTO_CHAIN = ['groq-gptoss120b', 'cf-gemma'];
+const AUTO_CHAIN = ['groq-gptoss120b', 'cf-gptoss120b', 'cf-gemma'];
 
-const IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
+// flux-2-dev is CF's higher-quality image model (vs. flux-1-schnell, which
+// trades quality for speed) — this directly addresses image quality being
+// noticeably weak before. Confirmed live on CF's catalog as of 2026-09-27.
+const IMAGE_MODEL = '@cf/black-forest-labs/flux-2-dev';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 20;
