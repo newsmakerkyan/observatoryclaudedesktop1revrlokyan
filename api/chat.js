@@ -15,9 +15,15 @@
 const PROVIDERS = {
   'auto': null, // special-cased — tries Groq, falls back to Cloudflare
 
+  // Verified against Groq's own deprecation log (2026-09-27):
+  //   - llama-3.1-8b-instant, llama-3.3-70b-versatile, qwen/qwen3-32b,
+  //     llama-4-scout-17b-16e-instruct, llama-4-maverick-17b-128e-instruct
+  //     are ALL DEAD on Groq now (Maverick was killed Feb 20, 2026).
+  //   - openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.6-27b are the
+  //     confirmed-alive models Groq itself recommends as replacements.
   'groq-gptoss120b': { kind: 'groq', model: 'openai/gpt-oss-120b' },
+  'groq-gptoss20b':  { kind: 'groq', model: 'openai/gpt-oss-20b' },
   'groq-qwen36':     { kind: 'groq', model: 'qwen/qwen3.6-27b' },
-  'groq-llama4-mav': { kind: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
 
   // All verified against Cloudflare's live model catalog (65 active models,
   // checked 2026-09-27). Their catalog rotates weekly with no notice, so if
@@ -33,10 +39,13 @@ const PROVIDERS = {
 const DEFAULT_PROVIDER_KEY = 'auto';
 const AUTO_CHAIN = ['groq-gptoss120b', 'cf-gptoss120b', 'cf-gemma'];
 
-// flux-2-dev is CF's higher-quality image model (vs. flux-1-schnell, which
-// trades quality for speed) — this directly addresses image quality being
-// noticeably weak before. Confirmed live on CF's catalog as of 2026-09-27.
-const IMAGE_MODEL = '@cf/black-forest-labs/flux-2-dev';
+// flux-2-dev requires a multipart/form-data request (different API contract
+// than the standard JSON body used everywhere else here), which caused
+// EVERY image request to fail with "required properties at '/' are
+// 'multipart'". Reverted to flux-1-schnell, which uses the same simple JSON
+// format as everything else and is confirmed working. Quality is lower than
+// flux-2-dev, but a working lower-quality image beats a broken high-quality one.
+const IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 20;
