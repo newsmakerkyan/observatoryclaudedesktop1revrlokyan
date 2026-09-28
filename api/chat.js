@@ -19,11 +19,12 @@ const PROVIDERS = {
   //   - llama-3.1-8b-instant, llama-3.3-70b-versatile, qwen/qwen3-32b,
   //     llama-4-scout-17b-16e-instruct, llama-4-maverick-17b-128e-instruct
   //     are ALL DEAD on Groq now (Maverick was killed Feb 20, 2026).
-  //   - openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.6-27b are the
+  //   - qwen/qwen3.6-27b was ALSO shut down on 2026-09-14 (replaced by qwen3.8-27b).
+  //   - openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.8-27b are the
   //     confirmed-alive models Groq itself recommends as replacements.
   'groq-gptoss120b': { kind: 'groq', model: 'openai/gpt-oss-120b' },
   'groq-gptoss20b':  { kind: 'groq', model: 'openai/gpt-oss-20b' },
-  'groq-qwen36':     { kind: 'groq', model: 'qwen/qwen3.6-27b' },
+  'groq-qwen38':     { kind: 'groq', model: 'qwen/qwen3.8-27b' },
 
   // All verified against Cloudflare's live model catalog (65 active models,
   // checked 2026-09-27). Their catalog rotates weekly with no notice, so if
@@ -274,6 +275,18 @@ module.exports = async (req, res) => {
       : await callProvider(process.env, providerKey, messages);
     return res.status(200).json(result);
   } catch (e) {
+    // Models get retired without notice. If the person picked a specific
+    // model and it failed, quietly try the Auto chain instead of showing an
+    // error — and say so honestly, so nobody thinks the picked model answered.
+    if (providerKey !== 'auto') {
+      try {
+        const fallback = await handleAuto(process.env, messages);
+        return res.status(200).json({
+          ...fallback,
+          reply: `${fallback.reply}\n\n(Note: the model you picked isn't available right now, so Auto answered instead.)`,
+        });
+      } catch { /* fall through to the error below */ }
+    }
     return res.status(502).json({ error: 'AI provider error', detail: e.detail || e.message });
   }
 };
