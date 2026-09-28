@@ -587,8 +587,8 @@
 <div class="wide" style="margin: 8px 0 24px;">
   <div class="panel">
     <div class="panel-body" style="font-family:var(--sans); font-size:13px; line-height:1.6; text-align:center;">
-      Built by Kyan Goel, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds.<hr>for any suggestions and queries contact email-newsislive@protonmail.com
-    </div>
+      Built by Kyan Goel, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds.<hr>for any suggestions and queries contact email- newsislive@protonmail.com
+         </div>
   </div>
 </div>
 
@@ -601,7 +601,7 @@
     <select id="aiModelPicker" class="ai-model-select">
       <option value="auto">Auto (recommended)</option>
       <option value="groq-gptoss120b">GPT-OSS 120B</option>
-      <option value="groq-qwen36">Qwen 3.6 27B</option>
+      <option value="groq-qwen38">Qwen 3.8 27B</option>
       <option value="groq-gptoss20b">GPT-OSS 20B</option>
       <option value="cf-gemma">Gemma 4</option>
       <option value="cf-llama4scout">Llama 4 Scout</option>
@@ -1677,6 +1677,13 @@ const chatLog = document.getElementById('chatLog');
 let aiProvider = localStorage.getItem('observatory_ai_provider') || 'auto';
 const picker = document.getElementById('aiModelPicker');
 picker.value = aiProvider;
+// A saved choice can point at a model we've since removed (e.g. a retired
+// one) — the <select> would go blank, so fall back to Auto in that case.
+if(picker.value !== aiProvider){
+  aiProvider = 'auto';
+  picker.value = 'auto';
+  localStorage.setItem('observatory_ai_provider', 'auto');
+}
 picker.addEventListener('change', e => {
   aiProvider = e.target.value;
   localStorage.setItem('observatory_ai_provider', aiProvider);
