@@ -1697,13 +1697,13 @@ picker.addEventListener('change', e => {
 });
 
 /* ---- Image model selection (persisted) ---- */
-let imageModel = localStorage.getItem('observatory_image_model') || 'flux-schnell';
+let imageModel = localStorage.getItem('observatory_image_model') || 'dreamshaper';
 const imgPicker = document.getElementById('imgModelPicker');
 imgPicker.value = imageModel;
 if(imgPicker.value !== imageModel){
   imageModel = 'flux-schnell';
   imgPicker.value = 'flux-schnell';
-  localStorage.setItem('observatory_image_model', 'flux-schnell');
+  localStorage.setItem('observatory_image_model', 'dreamshaper');
 }
 imgPicker.addEventListener('change', e => {
   imageModel = e.target.value;
