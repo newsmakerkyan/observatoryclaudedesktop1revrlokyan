@@ -56,7 +56,6 @@ const AUTO_CHAIN = ['groq-gptoss120b', 'cf-gptoss120b', 'cf-gemma'];
 // request (a different contract entirely), which broke every request last
 // time it was tried. Re-add it only if that's implemented properly.
 const IMAGE_MODELS = {
-  'flux-schnell':  { model: '@cf/black-forest-labs/flux-1-schnell', responseType: 'json', steps: 4 },
   'sdxl':          { model: '@cf/stabilityai/stable-diffusion-xl-base-1.0', responseType: 'binary', steps: 20 },
   'dreamshaper':   { model: '@cf/lykon/dreamshaper-8-lcm', responseType: 'binary', steps: 8 },
 };
