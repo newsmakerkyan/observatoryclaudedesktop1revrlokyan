@@ -588,14 +588,14 @@
   <div class="panel">
     <div class="panel-body" style="font-family:var(--sans); font-size:13px; line-height:1.6; text-align:center;">
       Built by Kyan Goel, an 11-year-old with a deep passion for technology, cyber security, and virtualization. This website serves as a live hub for global news and real-time data feeds.<hr>for any suggestions and queries contact email- newsislive@protonmail.com
-         </div>
+    </div>
   </div>
 </div>
 
 
 <button id="chatToggle" aria-label="Open operator chat"><span class="pip"></span>◈</button>
 <div id="chatPanel">
-  <div class="chat-head"><span><b>OPERATOR</b> // ASK ANYTHING </span><span class="close" id="chatClose">✕</span></div>
+  <div class="chat-head"><span><b>OPERATOR</b> // ASK ABOUT THE FEED</span><span class="close" id="chatClose">✕</span></div>
   <div class="ai-provider-toggle">
     <span class="ai-provider-label active" style="color:var(--text-muted); text-transform:none; letter-spacing:0;">AI:</span>
     <select id="aiModelPicker" class="ai-model-select">
@@ -611,8 +611,15 @@
       <option value="cf-qwen">Qwen 3 30B</option>
       <option value="cf-deepseek">DeepSeek R1</option>
     </select>
-    <span class="clear" id="chatImageHint" title="Tip: ask to draw/generate an image, or paste a link">🖼️</span>
     <span class="clear" id="chatClear" title="Clear saved chat history">🗑</span>
+  </div>
+  <div class="ai-provider-toggle">
+    <span class="ai-provider-label active" style="color:var(--text-muted); text-transform:none; letter-spacing:0;">🖼️:</span>
+    <select id="imgModelPicker" class="ai-model-select" title="Which model draws images when you ask">
+      <option value="flux-schnell">Flux (fast)</option>
+      <option value="sdxl">Stable Diffusion XL (classic)</option>
+      <option value="dreamshaper">DreamShaper (stylized)</option>
+    </select>
   </div>
   <div class="chat-log" id="chatLog"></div>
   <div class="chat-suggest" id="chatSuggest">
@@ -1689,6 +1696,20 @@ picker.addEventListener('change', e => {
   localStorage.setItem('observatory_ai_provider', aiProvider);
 });
 
+/* ---- Image model selection (persisted) ---- */
+let imageModel = localStorage.getItem('observatory_image_model') || 'flux-schnell';
+const imgPicker = document.getElementById('imgModelPicker');
+imgPicker.value = imageModel;
+if(imgPicker.value !== imageModel){
+  imageModel = 'flux-schnell';
+  imgPicker.value = 'flux-schnell';
+  localStorage.setItem('observatory_image_model', 'flux-schnell');
+}
+imgPicker.addEventListener('change', e => {
+  imageModel = e.target.value;
+  localStorage.setItem('observatory_image_model', imageModel);
+});
+
 /* ---- Saved chat history (persisted in this browser, via localStorage) ---- */
 const CHAT_HISTORY_KEY = 'observatory_chat_history';
 function loadSavedHistory(){
@@ -1801,6 +1822,7 @@ async function handleSend(text){
       body: JSON.stringify({
         message: t,
         provider: aiProvider,
+        imageModel: imageModel,
         context: { quakes: DATA.quakes.slice(0,3), iss: DATA.iss, markets: DATA.markets, atmos: DATA.atmos, finance: DATA.finance }
       }),
     });
