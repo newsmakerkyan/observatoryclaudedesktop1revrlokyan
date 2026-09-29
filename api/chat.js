@@ -46,7 +46,21 @@ const AUTO_CHAIN = ['groq-gptoss120b', 'cf-gptoss120b', 'cf-gemma'];
 // 'multipart'". Reverted to flux-1-schnell, which uses the same simple JSON
 // format as everything else and is confirmed working. Quality is lower than
 // flux-2-dev, but a working lower-quality image beats a broken high-quality one.
-const IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
+// Verified live against Cloudflare's catalog (2026-09-28). Two response
+// shapes exist across their image models — this matters, not just cosmetic:
+//   - "json": returns { result: { image: <base64 JPEG> } }  (Flux family)
+//   - "binary": returns the raw image bytes directly with an image/* content
+//     type (classic SDXL-style models) — must be read as an ArrayBuffer and
+//     base64-encoded manually, r.json() would fail on these.
+// flux-2-dev is deliberately excluded — it requires a multipart/form-data
+// request (a different contract entirely), which broke every request last
+// time it was tried. Re-add it only if that's implemented properly.
+const IMAGE_MODELS = {
+  'flux-schnell':  { model: '@cf/black-forest-labs/flux-1-schnell', responseType: 'json', steps: 4 },
+  'sdxl':          { model: '@cf/stabilityai/stable-diffusion-xl-base-1.0', responseType: 'binary', steps: 20 },
+  'dreamshaper':   { model: '@cf/lykon/dreamshaper-8-lcm', responseType: 'binary', steps: 8 },
+};
+const DEFAULT_IMAGE_MODEL_KEY = 'flux-schnell';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 20;
@@ -152,25 +166,33 @@ async function callCloudflare(env, model, messages) {
 }
 
 // ===== Image generation (Cloudflare Workers AI — Flux) =====
-async function generateImage(env, prompt) {
+async function generateImage(env, prompt, imageModelKey) {
   if (!env.CF_ACCOUNT_ID || !env.CF_API_TOKEN) {
     throw new Error('CF_ACCOUNT_ID and/or CF_API_TOKEN is not set — needed for image generation.');
   }
-  const url = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/${IMAGE_MODEL}`;
+  const cfg = IMAGE_MODELS[imageModelKey] || IMAGE_MODELS[DEFAULT_IMAGE_MODEL_KEY];
+  const url = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/${cfg.model}`;
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.CF_API_TOKEN}` },
-    body: JSON.stringify({ prompt, steps: 4 }),
+    body: JSON.stringify({ prompt, num_steps: cfg.steps, steps: cfg.steps }),
   });
   if (!r.ok) {
     const t = await r.text();
     const err = new Error('Image generation error'); err.detail = t.slice(0, 300); throw err;
   }
-  const d = await r.json();
-  // Flux returns a base64 JPEG in result.image
-  const b64 = d.result?.image;
+
+  let b64;
+  if (cfg.responseType === 'json') {
+    const d = await r.json();
+    b64 = d.result?.image; // Flux: already base64
+  } else {
+    // SDXL-style models return raw image bytes directly, not JSON.
+    const buf = await r.arrayBuffer();
+    b64 = Buffer.from(buf).toString('base64');
+  }
   if (!b64) throw new Error('Image generation returned no image.');
-  return { imageBase64: b64 };
+  return { imageBase64: b64, model: cfg.model };
 }
 
 // Detects "draw/generate/create an image of X" style requests.
@@ -226,6 +248,7 @@ module.exports = async (req, res) => {
         CF_API_TOKEN: Boolean(process.env.CF_API_TOKEN),
       },
       providers: Object.keys(PROVIDERS),
+      image_models: Object.keys(IMAGE_MODELS),
       auto_chain: AUTO_CHAIN,
     });
   }
@@ -238,7 +261,7 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-  const { message, context, provider } = body || {};
+  const { message, context, provider, imageModel } = body || {};
 
   if (!message || typeof message !== 'string' || message.length > 500) {
     return res.status(400).json({ error: 'Send a "message" string under 500 characters.' });
@@ -252,7 +275,7 @@ module.exports = async (req, res) => {
   const imagePrompt = extractImagePrompt(cleanMessage);
   if (imagePrompt) {
     try {
-      const result = await generateImage(process.env, imagePrompt);
+      const result = await generateImage(process.env, imagePrompt, imageModel);
       return res.status(200).json({ image: result.imageBase64, prompt: imagePrompt });
     } catch (e) {
       return res.status(502).json({ error: 'Image generation error', detail: e.detail || e.message });
